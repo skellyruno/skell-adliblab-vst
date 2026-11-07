@@ -36,10 +36,13 @@ public:
    if(a.clip==nullptr)continue;
    const auto length=a.clip->mono.size();
    const float pos=a.reverse?(float)(length-1)-a.position:a.position;
-   if(pos<0||pos>=(float)(length-1)){a.clip=nullptr;continue;}
+   // The first sample of a reversed clip is exactly the final sample.
+   // Clamp the upper interpolation index rather than discarding that voice.
+   if(pos<0||pos>(float)(length-1)){a.clip=nullptr;continue;}
    const auto i=(size_t)pos;
+   const auto next=juce::jmin(length-1,i+1);
    const float frac=pos-(float)i;
-   const float sample=juce::jmap(frac,a.clip->mono[i],a.clip->mono[i+1]);
+   const float sample=juce::jmap(frac,a.clip->mono[i],a.clip->mono[next]);
    // Both note-off and natural clip end are de-clicked without allocations.
    a.fade=clamp(a.fade+(a.releasing?-a.releaseStep:attackStep),0,1);
    const float remaining=(float)length-1.f-a.position;

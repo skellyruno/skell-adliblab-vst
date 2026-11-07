@@ -65,6 +65,18 @@ static void testClipBank() {
  for(int i=0;i<6500;++i)assert(std::isfinite(bank.tick().l));
  bank.clear(0);
  assert(bank.getClip(0)==nullptr);
+ // Regression: reverse playback must not terminate on the first sample,
+ // whose read index is exactly length - 1 (the rightmost endpoint).
+ adlib::ClipBank reverseBank;
+ reverseBank.prepare(44100);
+ auto reverseClip=std::make_unique<adlib::ClipBank::Clip>();
+ reverseClip->mono.resize(4410,.4f);
+ reverseBank.publish(1,std::move(reverseClip));
+ p.kbAltReverse=true;
+ reverseBank.noteOn(61,1.f,p); // odd note selects reverse, pad index 1
+ float reversePeak=0;
+ for(int i=0;i<128;++i)reversePeak=std::max(reversePeak,std::abs(reverseBank.tick().l));
+ assert(reversePeak>.01f);
 }
 
 

@@ -1,31 +1,90 @@
-name: Build SkellCore VST Template (Windows VST3)
+name: Build Skell AdlibLab VST3
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
   pull_request:
-    paths:
-      - 'SkellCore/**'
-      - 'CMakeLists.txt'
-      - 'Source/PluginEditor.cpp'
-      - 'Source/PluginProcessor.cpp'
-      - '.github/workflows/build.yml'
+
+permissions:
+  contents: read
 
 jobs:
-  build:
-    runs-on: windows-latest
+  dsp-safety:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Configure
+      - name: Restore initial source bundle if needed
+        run: python tools/unpack_source.py
+      - name: Check project parameters and CMake contract
+        run: python tests/verify_project.py
+      - name: Run DSP regression smoke under ASan/UBSan
+        run: |
+          g++ -std=c++17 -O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined -Itests/stubs tests/dsp_smoke.cpp -o dsp-smoke
+          ./dsp-smoke
+
+  build-windows:
+    runs-on: windows-latest
+    needs: dsp-safety
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore initial source bundle if needed
+        run: python tools/unpack_source.py
+      - name: Configure MSVC (x64)
         run: cmake -S . -B build -A x64
-      - name: Build
+      - name: Compile Windows VST3 and Standalone
         run: cmake --build build --config Release --parallel 2
-      - name: Package
+      - name: Package Windows VST3
         shell: pwsh
         run: |
-          $plugin = Get-ChildItem -Path build -Directory -Recurse -Filter '*.vst3' | Select-Object -First 1
-          if (-not $plugin) { throw 'VST3 bundle missing' }
-          Compress-Archive -Path $plugin.FullName -DestinationPath SkellCore-Template-Windows-VST3.zip
+          $plugin = Get-ChildItem build -Directory -Recurse -Filter '*.vst3' | Select-Object -First 1
+          if (-not $plugin) { throw 'Skell AdlibLab VST3 not found' }
+          Compress-Archive -Path $plugin.FullName -DestinationPath Skell-AdlibLab-Windows-VST3.zip
       - uses: actions/upload-artifact@v4
         with:
-          name: SkellCore-Template-Windows-VST3
-          path: SkellCore-Template-Windows-VST3.zip
+          name: Skell-AdlibLab-Windows-VST3
+          path: Skell-AdlibLab-Windows-VST3.zip
           if-no-files-found: error
+
+  build-macos:
+    runs-on: macos-latest
+    needs: dsp-safety
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore initial source bundle if needed
+        run: python3 tools/unpack_source.py
+      - name: Configure Xcode
+        run: cmake -S . -B build -G Xcode
+      - name: Compile macOS VST3 and Standalone
+        run: cmake --build build --config Release --parallel 2
+      - name: Package macOS VST3
+        run: |
+          PLUGIN=$(find build -name '*.vst3' -type d | head -1)
+          test -n "$PLUGIN"
+          zip -q -r Skell-AdlibLab-macOS-VST3.zip "$PLUGIN"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Skell-AdlibLab-macOS-VST3
+          path: Skell-AdlibLab-macOS-VST3.zip
+          if-no-files-found: error
+
+  publish-source-tree:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    needs: dsp-safety
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Expand source tree
+        run: python tools/unpack_source.py
+      - name: Publish extracted source as normal GitHub files
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Source Assets tests README.md CMakeLists.txt .gitignore
+          if ! git diff --cached --quiet; then
+            git commit -m 'chore: publish Skell AdlibLab v0.2 source tree'
+            git push
+          fi

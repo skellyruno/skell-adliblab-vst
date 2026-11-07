@@ -1,74 +1,94 @@
-# SkellCore VST Template
-Shared **Skell Audio** foundation for JUCE 8 C++17 VST3 plugins.
+# skell-adliblab-vst
 
-The former Skell VST Quickstart is preserved as a **small gain demo plugin**, with its original VST3 manufacturer, plugin code and bundle identity unchanged. Build a new plugin by choosing unique IDs; never reuse these demo IDs in commercial releases.
+**Skell AdlibLab** — an experimental adlib-designer VST3/Standalone project for JUCE 8 / CMake. Derived from the supplied `skell-vst-template-main(1).zip` starter. The GitHub repository also contains an existing SkellCore foundation; the AdlibLab CMake target preserves and links the reusable SkellCore DSP/UI targets without replacing that shared library.
 
-## Contents
-- `SkellCore::DSP`: portable C++17 TempoClock, PhraseTracker, OnsetDetector, four-line FDNReverb, prototype 4× interpolated-peak limiter, PitchFormantEngine.
-- `SkellCore::UI`: JUCE LookAndFeel, colour themes and glow cache.
-- **Production DSP backend copies**: SkellyTune RealtimeTuner v3.3 and dependencies (MIT), exact DeEsser PhraseAwareDetector behavior in a namespaced copy, and Skelly Master MasteringEngine in a namespaced copy.
-- `SkellCore/backends/SkellyTuneBackend.h`: adapter matching production pitch backend to the shared `PitchFormantEngine`.
-- Separate portable CI (Windows + Linux) and Windows JUCE VST3 build pipeline.
+> **Development status: v0.2 source prototype, not a verified production VST3.** The DSP smoke test and static parameter checks pass. A real JUCE build, host validation, microphone/vocal listening tests, and CPU profiling have not been completed here. The advanced pitch/formant and spectral-morph features described in the original brief are not yet implemented at production quality.
 
-## Generate a new plugin (recommended)
+## Interface & features implemented
 
-```sh
-python tools/new_plugin.py "Skell Compressor" ../skell-compressor-vst --code SC01
-```
-
-This creates an independent VST3 + Standalone project with an immutable SkellCore dependency, unique plugin code, generated CI, and the original quickstart gain processor. Pick a different four-character code for **every** plugin. Once you rename the GitHub template repository, use `--core-repo https://github.com/skellyruno/skellcore-vst-template.git`.
-
-## Low-end PC performance and safety
-
-SkellCore offers an opt-in `TruePeakLimiter::Quality::Economy` detector (2 phases × 8 taps, versus default Standard's 4 × 16), modulo-free FIR reads, bounded buffer allocations, pre-prepare bypass safety, a bounded UI glow cache, and actual Release-mode allocation/parity tests. Read [performance details](SkellCore/PERFORMANCE.md) before enabling Economy in any shipped plugin.
+- Responsive 1280 × 800 dark interface with original ADLIBLAB wordmark, distinct STACK / CHARACTER / THROW / MELT accent colors, rotary controls, clip pads, a piano keyboard, and orange CHAOS macro. Scales as a fixed-aspect window.
+- Drag a module's small handle horizontally and release to reorder the four module panels. The router applies a roughly 30 ms wet-to-dry-to-wet bridge around the order switch, reducing discontinuities (not a dual-router crossfade).
+- STACK: 2–8 additive/detuned pitch-processed voices, per-voice draggable pan/pitch positions and time offset, key/scale-aware semitone quantisation, chaos re-roll on detected onsets. Current pitch engine is a two-grain overlapped resampler; NOT a high-quality identity-phase-locked phase vocoder. Independent formant shaping, independent formant spectral shaping is future work.
+- CHARACTER: six characters (Alien, Robot, Demon, Cartoon, Ghost, Gremlin) implemented with economical modulation, waveshaping, frequency-dependent colour, glide of intensity, bit-depth reduction, and sample hold. This is a creative-effects baseline, not the full independent-formant set specified.
+- THROW: onset/phrase-end detection, four overlapping prerecorded echo voices with cached per-repeat coefficients, interpolated pitch playback and de-clicked edges, host-BPM divisions (120 BPM fallback), repeating with feedback attenuation, per-repeat pitch resampling, reverse and ping-pong with filter sweep. It currently captures the last ~280 ms, with a lower-complexity phrase detector and without a true lookahead. Manual trigger available by button or MIDI (when in Manual mode).
+- MELT: load WAV/AIFF/FLAC audio (5 seconds maximum), 24-band filter-bank vocoding, envelope-followed sample re-pitching, and a morph-inspired blend. This is NOT STFT spectral-envelope morphing yet.
+- EIGHT CLIP PADS: drag audio onto a pad; right-click to load, clear, audition, or record the next detected phrase; Shift-click also arms recording. Click to audition. Loaded clips can be played from routed MIDI notes with click-free attack/release, fair 16-voice stealing and pass through the chain. Keyboard C3–C5 supports mouse-down, drag-to-new-note and release audition. Recording has a five-second cap and publishes the finished clip from the GUI timer, not the realtime audio callback.
+- CHAOS: deterministic seeded re-roll with seed lock, re-roll button, and onset-responsive variations in STACK, CHARACTER, THROW, and MELT.
+- APVTS automation: 49 user parameters, with unautomated module order stored in state. Full patch and in-memory WAV clip data are serialized into host state or exported to `.skad` patch files.
+- Global wet/dry mix, output gain, stereo width, and an optional safety **soft clip**. The soft clip is not a true-peak limiter.
 
 ## Build
-```sh
-cmake -S . -B build -DJUCE_PATH=/path/to/JUCE
-cmake --build build --config Release
+
+JUCE 8.0.12 is fetched by CMake when network access is available. Or supply a local JUCE checkout with `-DJUCE_PATH=...`.
+
+### Windows (MSVC / Visual Studio 2022 or newer)
+
+```powershell
+cmake -S . -B build -A x64
+cmake --build build --config Release --parallel 2
 ```
 
-`JUCE_PATH` is optional; CMake otherwise fetches pinned JUCE 8.0.12.
-```sh
-cmake -S SkellCore -B build-core -DSKELLCORE_BUILD_TESTS=ON
-cmake --build build-core --config Release
-ctest --test-dir build-core -C Release --output-on-failure
+VST3 output: `build/SkellAdlibLab_artefacts/Release/VST3/Skell AdlibLab.vst3`
+Standalone: `build/SkellAdlibLab_artefacts/Release/Standalone/Skell AdlibLab.exe`
+
+### macOS (Xcode)
+
+```bash
+cmake -S . -B build -G Xcode
+cmake --build build --config Release --parallel 2
 ```
 
-## Reuse in other plugin repos
-Copy `SkellCore/` into your monorepo, or FetchContent the **immutable commit** of this template. Example from a consumer:
-```cmake
-include(FetchContent)
-FetchContent_Declare(SkellCore
-  GIT_REPOSITORY https://github.com/skellyruno/skell-vst-template.git
-  GIT_TAG <IMMUTABLE_COMMIT_SHA>
-  SOURCE_SUBDIR SkellCore)
-FetchContent_MakeAvailable(SkellCore)
-target_link_libraries(MyPlugin PRIVATE SkellCore::DSP SkellCore::UI)
+VST3 output: `build/SkellAdlibLab_artefacts/Release/VST3/Skell AdlibLab.vst3`
+Standalone app: `build/SkellAdlibLab_artefacts/Release/Standalone/Skell AdlibLab.app`
+
+For a private/local JUCE clone:
+
+```bash
+cmake -S . -B build -DJUCE_PATH=/absolute/path/to/JUCE
 ```
-Replace `MyPlugin` with the JUCE target. Once the repository itself is renamed on GitHub, update the URL to `skellcore-vst-template` while pinning the immutable revision. Repositories renamed by GitHub redirect old clones but new URLs should be adopted in each plugin.
 
-## Integration APIs
-```cpp
-#include <SkellCore/Core.h>
-#include <SkellCore/backends/SkellyTuneBackend.h>
-skellcore::backends::SkellyTuneBackend tuning;
-skellcore::PitchFormantEngine pitch;
-pitch.setBackend(&tuning);
-pitch.prepare(48000, 2);
-auto latency = pitch.latencySamples(); // Report from prepareToPlay.
+GitHub Actions is configured to run a sanitizer-backed DSP regression test before building Windows and macOS VST3/Standalone. The initial repository upload may use a temporary compressed source bundle (due to connector limitations); CI expands it and commits the extracted sources as normal tracked files if Actions has contents-write permission.
+
+## MIDI
+
+The plug-in declares `NEEDS_MIDI_INPUT TRUE` and `acceptsMidi() == true`. Some DAWs, including FL Studio, require MIDI routing from a separate controller/channel into an audio effect. Pad mapping wraps notes relative to KB ROOT (`60`/C4 by default). The simplified MIDI playback uses resampling, so tempo and timbre vary with note pitch. `FORMANT LOCK` is exposed but full formant-independent re-pitching is not implemented yet.
+
+## Shared pitch-engine API
+
+`Source/dsp/PitchFormantEngine.h` exposes `prepare(sampleRate)`, `push(Stereo)`, and `render(channel, pitchRatio, Head&, formantSemitones)`. The shared ring is populated once per audio sample; each rendering voice holds independent phase state. To reuse it in another plugin, include `PitchFormantEngine.h`, prepare once outside the callback, call `push()` per input frame, then call `render()` for each desired voice. `formantSemitones` is currently reserved: a shared FFT analysis / identity-phase-locked, envelope-preserving resynthesis stage must replace the granular prototype before claiming genuine independent pitch/formant shifting. Do not assume a full choir-grade engine.
+
+## v0.2 improvements
+
+- STACK scale-lock respects the selected key and scale; ratio and stereo-pan coefficients are cached when unchanged, reducing trigonometric work.
+- THROW interpolates pitched repeat samples, fades playback edges, and caches filter, gain and pitch settings once per repeat/automation change to reduce per-sample CPU.
+- MIDI clip bank applies a 2 ms attack, 6 ms release and short end-of-clip fade; 16 simultaneous voices steal in round-robin order.
+- On-screen keyboard supports mouse press, drag and note release; the default interface width is 1024 px (still resizable at fixed aspect ratio).
+- Regression tests exercise 22.05, 44.1, 48, 96 and 192 kHz, chain reordering, throw activity and MIDI clip note release, including ASan/UBSan in CI.
+
+## Validation
+
+Without JUCE installed, you can still test the basic DSP classes at five sample rates using a lightweight **test-only** shim:
+
+```bash
+python tests/verify_project.py
+g++ -std=c++17 -O2 -Wall -Wextra -Itests/stubs tests/dsp_smoke.cpp -o dsp_smoke
+./dsp_smoke
 ```
-The production tuner exposes block processing and stable declared dry/transient latency. Do not change PDC inside processBlock and do not confuse variable pitch-cycle source age with fixed host delay.
 
-Include `<SkellCore/backends/deesser/PhraseAwareDetector.h>` and use `skellcore::deesser::PhraseAwareDetector` for the existing DeEsser logic, and `<SkellCore/backends/master/MasteringEngine.h>` for the sampled-at-oversampled-rate mastering core. The mastering engine needs a high-quality *external* oversampler. The generic `TruePeakLimiter` is experimental; no compliance claim.
+**The test shim is not JUCE and cannot validate plugin compilation or host behaviour.** All real builds use `JUCE_PATH` or fetch JUCE. The complete plugin was NOT compiled or auditioned in the archive-generation environment because network resolution of `github.com` was unavailable and there was no local JUCE source checkout.
 
-## Status and migration
-This is **v0.3 shared-core work**. Source import does not automatically migrate any already released plugin. Existing DAW automation, UI layout, plugin IDs, and audio behavior must stay unchanged until validated per-plugin.
+## Known v0.1 gaps and priorities
 
-- Tuning, phrase aware, and mastering algorithms: imported, require A/B tests before plugin adoption.
-- FDN reverb, prototype true peak limiter, onset tracking: functional portable modules, not production-certified.
-- Host tempo / JUCE UI: available, UI not mandatory for a plugin.
-- Choir: links pinned SkellCore target on separate PR; current sound unchanged.
-- AdlibLab / Silence Designer / other new plugins: opt in as their CMake projects are ready.
+1. **Build/host validation:** compile on Windows/macOS CI, resolve any JUCE 8 API issues, test VST3 in FL Studio, Ableton and REAPER. Validate saved-state restoration and DAW automation.
+2. **Audio correctness:** replace granular pitch shifting with one FFT analysis, N identity-phase-locked resynthesis streams, real formant preservation and scale-aware tuning. Report measured wet-path latency and compensate dry/wet and MIDI output correctly.
+3. **Realtime hardening:** implement optional true dual-route crossfade for reorder, full sample-accurate MIDI events and an explicit lock-free clip and state synchronization plan; profile worst-case CPU/heap allocations.
+4. **Throw refinement:** proper syllable vs word segmentation, a lookahead phrase tracker, non-aliased pitch steps, and repeat-length/velocity tail scaling.
+5. **MELT refinement:** STFT spectral envelope morph and a pitch-follow mode with formant control, plus sample start/loop markers.
+6. **UI:** original licensed embedded display/mono fonts, 60 Hz minimal repaint + cached glows, clip Rename/Reverse, waveform selection, reordering insertion feedback, factory preset management, complete GUI settings.
+7. **Limiter:** substitute a measured oversampled true-peak/lookahead limiter for the current non-lookahead tanh safety clip.
 
-See [SkellCore/README.md](SkellCore/README.md) and [GitHub migration tracker](https://github.com/skellyruno/skell-vst-template/issues/2).
+## Audio/data notes
+
+Each loaded sample is limited to 5 s and downsampled to 44.1 kHz mono (220,500 floats maximum). Host state embeds up to 220,500 float samples for each of eight pads plus one MELT sample. This may produce a host preset of several megabytes; avoid using extremely long sample files. Loaded clips are retained until the plugin is destroyed so audio callbacks can read published immutable pointers without locking.
+
+The graphic palette uses the requested colors. UI fonts fall back to system sans-serif and monospace for this revision; fonts have not been bundled.

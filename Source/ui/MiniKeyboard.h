@@ -23,6 +23,7 @@ public:
   }
  }
 private:
+ SkellAdlibLabProcessor& processor;
  int noteFromX(int x)const{return 48+juce::jlimit(0,24,(int)((float)x*25/juce::jmax(1,getWidth())));}
  void release(){if(pressed>=0){processor.requestMidiOff(pressed);pressed=-1;repaint();}}
  int pressed=-1;

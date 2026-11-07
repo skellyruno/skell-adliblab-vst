@@ -8,7 +8,8 @@ public:
   auto r=juce::Rectangle<float>((float)x,(float)y,(float)w,(float)h).reduced(5);
   float diameter=juce::jmin(r.getWidth(),r.getHeight());
   r=r.withSizeKeepingCentre(diameter,diameter);
-  auto c=r.getCentre(),radius=diameter*.5f;
+  const auto c=r.getCentre();
+  const float radius=diameter*.5f;
   g.setColour(juce::Colour(0xff0c0e16));g.fillEllipse(r);
   g.setColour(juce::Colour(0xff34313f));g.drawEllipse(r,1.5f);
   juce::Path base,arc;

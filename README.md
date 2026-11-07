@@ -63,6 +63,8 @@ The plug-in declares `NEEDS_MIDI_INPUT TRUE` and `acceptsMidi() == true`. Some D
 - THROW interpolates pitched repeat samples, fades playback edges, and caches filter, gain and pitch settings once per repeat/automation change to reduce per-sample CPU.
 - MIDI clip bank applies a 2 ms attack, 6 ms release and short end-of-clip fade; 16 simultaneous voices steal in round-robin order.
 - On-screen keyboard supports mouse press, drag and note release; the default interface width is 1024 px (still resizable at fixed aspect ratio).
+- Pitch detection now uses a voiced/unvoiced-aware YIN-style difference function that selects the first genuine periodicity, avoiding octave-down subharmonic locks; the DSP tests check pitch accuracy and noise rejection.
+- The two build errors caught by Windows/macOS CI were corrected: a mixed-type `auto` declaration in LookAndFeel and the missing keyboard processor reference.
 - Regression tests exercise 22.05, 44.1, 48, 96 and 192 kHz, chain reordering, throw activity and MIDI clip note release, including ASan/UBSan in CI.
 
 ## Validation

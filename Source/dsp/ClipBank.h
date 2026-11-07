@@ -25,13 +25,13 @@ public:
   if(target<0)target=nextVoice;
   nextVoice=(target+1)%(int)active.size();
   const float noteRatio=std::pow(2.f,(midi-p.kbRoot)/12.f);
-  active[(size_t)target]={clip,0,noteRatio*44100.f/(float)sampleRate,clamp(velocity,0,1),p.kbAltReverse&&(midi%2!=0),midi,0,false};
+  active[(size_t)target]={clip,0,noteRatio*44100.f/(float)sampleRate,p.kbVelIntensity?clamp(velocity,0,1):1.f,p.kbAltReverse&&(midi%2!=0),midi,0,false,
+   (float)(1.0/(sampleRate*(p.kbVelTail?(0.012+0.11*clamp(velocity,0,1)):0.045)))};
  }
  void noteOff(int midi){for(auto& a:active)if(a.clip!=nullptr&&a.midi==midi)a.releasing=true;}
  Stereo tick() {
   float sum=0;
   const float attackStep=(float)(1.0/(sampleRate*.002));
-  const float releaseStep=(float)(1.0/(sampleRate*.006));
   for(auto& a:active){
    if(a.clip==nullptr)continue;
    const auto length=a.clip->mono.size();
@@ -41,7 +41,7 @@ public:
    const float frac=pos-(float)i;
    const float sample=juce::jmap(frac,a.clip->mono[i],a.clip->mono[i+1]);
    // Both note-off and natural clip end are de-clicked without allocations.
-   a.fade=clamp(a.fade+(a.releasing?-releaseStep:attackStep),0,1);
+   a.fade=clamp(a.fade+(a.releasing?-a.releaseStep:attackStep),0,1);
    const float remaining=(float)length-1.f-a.position;
    const float tail=clamp(remaining/(float)(sampleRate*.004*a.ratio),0,1);
    sum+=sample*a.velocity*a.fade*tail*.55f;
@@ -51,7 +51,7 @@ public:
   return {sum,sum};
  }
 private:
- struct Active {const Clip* clip=nullptr;float position=0,ratio=1,velocity=0;bool reverse=false;int midi=-1;float fade=0;bool releasing=false;};
+ struct Active {const Clip* clip=nullptr;float position=0,ratio=1,velocity=0;bool reverse=false;int midi=-1;float fade=0;bool releasing=false;float releaseStep=.01f;};
  std::array<std::atomic<const Clip*>,8>pads;
  std::vector<std::unique_ptr<Clip>>owned;
  std::array<Active,16>active{};double sampleRate=44100;int nextVoice=0;

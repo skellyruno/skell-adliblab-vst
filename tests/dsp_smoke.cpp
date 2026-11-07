@@ -56,15 +56,36 @@ static void testClipBank() {
  for(int i=0;i<128;++i)peak=std::max(peak,bank.tick().l);
  assert(peak>.01f);
  bank.noteOff(60);
- for(int i=0;i<1000;++i)bank.tick();
+ for(int i=0;i<6500;++i)bank.tick();
  assert(std::abs(bank.tick().l)<.00001f); // released, no pop on next block
  // Stress the 16-voice pool and every pad; no slot should overwrite itself only.
  for(int i=0;i<40;++i)bank.noteOn(60+i,.7f,p);
  for(int i=0;i<300;++i)assert(std::isfinite(bank.tick().l));
  for(int i=0;i<40;++i)bank.noteOff(60+i);
- for(int i=0;i<2000;++i)assert(std::isfinite(bank.tick().l));
+ for(int i=0;i<6500;++i)assert(std::isfinite(bank.tick().l));
  bank.clear(0);
  assert(bank.getClip(0)==nullptr);
+}
+
+
+static void testPitchAccuracy() {
+ for(double sr:{44100.,48000.,96000.,192000.}){
+  for(float expected:{90.f,110.f,146.83f,220.f,440.f,880.f}){
+   adlib::PitchTracker tracker;tracker.prepare(sr);
+   for(int i=0;i<(int)(sr*.18);++i)
+    tracker.tick(.2f*std::sin(2.f*adlib::pi*expected*i/(float)sr));
+   float hz=tracker.getHz();
+   if(!(std::abs(hz-expected)/expected<.03f)){
+    std::cerr<<"Pitch accuracy failed at "<<sr<<" Hz: "<<expected<<" -> "<<hz<<"\n";
+    assert(false);
+   }
+  }
+ }
+ adlib::PitchTracker tracker;tracker.prepare(48000);
+ for(int i=0;i<48000;++i)tracker.tick(.2f*std::sin(2.f*adlib::pi*220*i/48000.f));
+ uint32_t seed=12345;
+ for(int i=0;i<48000;++i){seed=seed*1664525u+1013904223u;tracker.tick((((seed>>8)&0xFFFFFF)/8388607.5f-1.f)*.2f);}
+ assert(tracker.getHz()<10.f); // No persistent false note lock on white noise.
 }
 
 int main(){
@@ -72,5 +93,6 @@ int main(){
  adlib::Vocoder voc;voc.prepare(44100);
  for(int i=0;i<1000;++i)assert(std::isfinite(voc.tick(.3f,.1f,.3f)));
  testClipBank();
- std::cout << "DSP smoke PASS: 5 sample rates, reorder, throw, pitch, MIDI clips\n";
+ testPitchAccuracy();
+ std::cout << "DSP smoke PASS: 5 sample rates, reorder, throw, YIN pitch/noise, MIDI clips\n";
 }

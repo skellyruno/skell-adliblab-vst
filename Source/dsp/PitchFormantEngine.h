@@ -12,18 +12,21 @@ public:
   constexpr int grain=768;
   ratio=clamp(ratio,0.5f,2.0f);
   auto p=head.phase;
-  auto a=grainPhase(p),b=grainPhase(p+grain*.5f);
+  // Head phase is always in [0, grain), so bounded wraps avoid fmod() on the audio thread.
+  const float a=p;
+  float b=p+grain*.5f; if(b>=grain)b-=grain;
   // fixed 900-sample base delay keeps read heads behind write location.
   const float tA=sampleAt(channel,(float)writeIndex-900.0f-additionalDelay-a);
   const float tB=sampleAt(channel,(float)writeIndex-900.0f-additionalDelay-b);
   float wA=1.f-std::abs(a-grain*.5f)/(grain*.5f);
   float wB=1.f-std::abs(b-grain*.5f)/(grain*.5f);
-  head.phase=grainPhase(p+ratio-1.f);
+  head.phase=p+ratio-1.f;
+  if(head.phase>=grain)head.phase-=grain;
+  else if(head.phase<0)head.phase+=grain;
   return (tA*wA+tB*wB)/(wA+wB+0.00001f);
  }
  static int getBaseDelaySamples() {return 900;}
 private:
- static float grainPhase(float p) {p=std::fmod(p,768.f);if(p<0)p+=768.f;return p;}
  float sampleAt(int ch,float p) const {
   int i=(int)std::floor(p);float f=p-(float)i;int a=i&65535,b=(i+1)&65535;
   return juce::jmap(f,ring[(size_t)ch][(size_t)a],ring[(size_t)ch][(size_t)b]);

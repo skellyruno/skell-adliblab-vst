@@ -9,7 +9,21 @@ else()
   FetchContent_MakeAvailable(JUCE)
 endif()
 
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/SkellCore/CMakeLists.txt")
+# The VST3 release retains its bundled SkellCore. The optional screenshot
+# executable uses a pinned upstream commit that exposes SkellCore::UIRenderer.
+option(SKELL_ADLIBLAB_BUILD_UI_RENDERER "Build real JUCE editor screenshots" OFF)
+set(SKELL_ADLIBLAB_RENDERER_SKELLCORE_REV "438bc74a86a40bf54cfa8089832a477822c8ccda"
+    CACHE STRING "Immutable SkellCore renderer commit")
+if(SKELL_ADLIBLAB_BUILD_UI_RENDERER)
+  FetchContent_Declare(SkellCoreRendererDependency
+    GIT_REPOSITORY https://github.com/skellyruno/skell-vst-template.git
+    GIT_TAG ${SKELL_ADLIBLAB_RENDERER_SKELLCORE_REV}
+    SOURCE_SUBDIR SkellCore)
+  FetchContent_MakeAvailable(SkellCoreRendererDependency)
+  if(NOT TARGET SkellCore::UIRenderer)
+    message(FATAL_ERROR "SkellCore::UIRenderer unavailable in pinned revision")
+  endif()
+elseif(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/SkellCore/CMakeLists.txt")
   add_subdirectory(SkellCore)
 endif()
 
@@ -46,4 +60,18 @@ if(TARGET SkellCoreDSP)
 endif()
 if(TARGET SkellCoreUI)
   target_link_libraries(SkellAdlibLab PRIVATE SkellCore::UI)
+endif()
+
+# This development executable links the REAL JUCE processor/editor and
+# plugin assets. It is not a standalone release or an additional plugin format.
+if(SKELL_ADLIBLAB_BUILD_UI_RENDERER)
+  add_executable(SkellAdlibLabUIRenderer tests/ui_renderer.cpp)
+  target_include_directories(SkellAdlibLabUIRenderer PRIVATE
+    "${CMAKE_CURRENT_BINARY_DIR}/SkellAdlibLab_artefacts/JuceLibraryCode")
+  target_compile_features(SkellAdlibLabUIRenderer PRIVATE cxx_std_17)
+  target_compile_definitions(SkellAdlibLabUIRenderer PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
+  target_link_libraries(SkellAdlibLabUIRenderer PRIVATE
+    SkellAdlibLab AdlibLabAssets SkellCore::UIRenderer
+    SkellCore::UI SkellCore::DSP
+    juce::juce_audio_utils juce::juce_dsp juce::juce_gui_extra)
 endif()

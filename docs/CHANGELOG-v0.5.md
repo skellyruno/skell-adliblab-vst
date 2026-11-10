@@ -14,3 +14,4 @@ Limitations: CPU benchmark does not substitute actual FL Studio validation; form
 - THROW per-repeat panning is cached; no trig in the audio-rate wet loop.
 - Preview keyboard releases notes when dragged outside or destroyed.
 - Added portable state flushing for inaudible recursive tails; regression verifies no subnormal output/envelopes after silence without host FTZ/DAZ.
+- UI bypass now dims all module controls while preserving readable title, power switch and drag grip, updated immediately on click and on host automation via the editor timer.

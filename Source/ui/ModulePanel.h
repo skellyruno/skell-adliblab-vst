@@ -24,10 +24,24 @@ public:
   :processor(p),palette(pal),moduleId(id),title(std::move(name)),grip(palette){
    grip.onDrop=[this](int x){if(requestReorder)requestReorder(moduleId,x);};addAndMakeVisible(grip);grip.setBounds(249,11,29,26);
    on.setButtonText("");addAndMakeVisible(on);on.setBounds(211,15,22,22);
+   on.onClick=[this]{updateBypassVisual();};
    toggles.push_back(std::make_unique<ButtonAttachment>(p.parameters,enabled,on));
   }
  std::function<void(int,int)>requestReorder;
+ // Keep module bypass visible under both mouse input and host automation.
+ // The processor's APVTS attachment owns the actual enable state.
+ void updateBypassVisual(){
+  const bool enabled=on.getToggleState();
+  if(lastEnabled==(enabled?1:0))return;
+  lastEnabled=enabled?1:0;
+  for(int i=0;i<getNumChildComponents();++i){
+   auto* child=getChildComponent(i);
+   if(child!=&on&&child!=&grip)child->setAlpha(enabled?1.f:.36f);
+  }
+  repaint();
+ }
  void refreshTheme(){
+  updateBypassVisual();
   on.setColour(juce::ToggleButton::tickColourId,accent());
   on.setColour(juce::ToggleButton::textColourId,palette.text);
   for(auto*s:sliders){s->setColour(juce::Slider::rotarySliderFillColourId,accent());s->setColour(juce::Slider::textBoxTextColourId,palette.text);}
@@ -89,7 +103,7 @@ protected:
  }
  SkellAdlibLabProcessor&processor;const Theme::Palette&palette;int moduleId;juce::String title;
 private:
- DragGrip grip;juce::ToggleButton on;
+ DragGrip grip;juce::ToggleButton on;int lastEnabled=-1;
  juce::OwnedArray<juce::Slider>sliders;juce::OwnedArray<juce::Label>labels;
  juce::OwnedArray<juce::ToggleButton>buttons;juce::OwnedArray<juce::ComboBox>combos;
  std::vector<std::unique_ptr<SliderAttachment>>slidersAtt;

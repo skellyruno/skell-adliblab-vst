@@ -94,7 +94,7 @@ The graphic palette uses the requested colors. UI fonts fall back to system sans
 
 ### v0.5 hardening notes (November 2026)
 - Windows x64 VST3 only; the CI DSP safety job runs on Linux but does not distribute Linux plugins.
-- UI skull: left-click cycles the four palettes; right-click opens a named theme picker. Interface preserves its 1280×800 aspect ratio at 800–1920 pixels.
+- UI skull: left-click cycles the four palettes; right-click opens a named theme picker. Interface preserves its 1280×800 aspect ratio at 800–1920 pixels; bypassed module controls visually dim on button clicks or automation changes.
 - CHARACTER enable/bypass now crossfades instead of hard switching, and expensive filter coefficients update on changes, not every sample. Onset filters preserve millisecond-scale behavior across sample rates.
 - MIDI keyboard gestures use a bounded lock-free event queue to preserve note-off/note-on ordering on glissandos; stolen clip voices carry a 4ms release tail.
 - Input/sample validation suppresses non-finite values, output subnormals are zeroed, and captured/imported audio is bounded to ±8 before processing.

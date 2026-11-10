@@ -30,7 +30,7 @@ public:
   const float carry=active[(size_t)target].clip?active[(size_t)target].lastOutput:0.f;
   active[(size_t)target]={clip,0,noteRatio*44100.f/(float)sampleRate,p.kbVelIntensity?clamp(velocity,0,1):1.f,p.kbAltReverse&&(midi%2!=0),midi,0,false,
    (float)(1.0/(sampleRate*(p.kbVelTail?(0.012+0.11*clamp(velocity,0,1)):0.045))),carry,carry,
-   carry!=0.f?juce::jmax(1,(int)(sampleRate*.004)):0};
+   std::abs(carry)>1.e-8f?juce::jmax(1,(int)(sampleRate*.004)):0};
  }
  void noteOff(int midi){for(auto& a:active)if(a.clip!=nullptr&&a.midi==midi)a.releasing=true;}
  void releaseAll(){for(auto& a:active)if(a.clip!=nullptr)a.releasing=true;}

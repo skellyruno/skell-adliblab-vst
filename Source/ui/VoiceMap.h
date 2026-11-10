@@ -20,7 +20,8 @@ public:
   float best=1.e9f;dragIndex=-1;
   int count=juce::jlimit(2,8,2+(int)std::lround(processor.parameters.getRawParameterValue("stackVoices")->load()));
   for(int i=0;i<count;++i){float x=juce::jmap(processor.getVoicePan(i),-1.f,1.f,10.f,(float)getWidth()-10),y=juce::jmap(processor.getVoicePitch(i),-1.f,1.f,(float)getHeight()-10,10.f);float d=std::hypot(e.position.x-x,e.position.y-y);if(d<best){best=d;dragIndex=i;}}
-  if(best>23)dragIndex=-1;mouseDrag(e);
+  if(best>23)dragIndex=-1;
+  mouseDrag(e);
  }
  void mouseDrag(const juce::MouseEvent&e)override{if(dragIndex<0)return;float pan=juce::jmap(e.position.x,10.f,(float)getWidth()-10,-1.f,1.f),pitch=juce::jmap(e.position.y,10.f,(float)getHeight()-10,1.f,-1.f);processor.setVoicePosition(dragIndex,juce::jlimit(-1.f,1.f,pan),juce::jlimit(-1.f,1.f,pitch));repaint();}
  void mouseUp(const juce::MouseEvent&)override{dragIndex=-1;repaint();}

@@ -41,7 +41,9 @@ public:
    }
    if(!v.started)continue;
    // Recompute if host automation changes pitch, repeat count, feedback, or filter.
-   if(v.pitch!=p.throwPitchPerRepeat||v.feedback!=p.throwFeedback||v.filterStart!=p.throwFilterStart||v.filterEnd!=p.throwFilterEnd||v.repeats!=p.throwRepeats||v.pingPong!=p.throwPingPong)
+   if(std::abs(v.pitch-p.throwPitchPerRepeat)>1.e-4f||std::abs(v.feedback-p.throwFeedback)>1.e-5f
+      ||std::abs(v.filterStart-p.throwFilterStart)>.05f||std::abs(v.filterEnd-p.throwFilterEnd)>.05f
+      ||v.repeats!=p.throwRepeats||v.pingPong!=p.throwPingPong)
     updateVoice(v,p);
    if(v.position<(float)v.length-1){
     float pos=p.throwReverse?(float)(v.length-1)-v.position:v.position;

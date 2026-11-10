@@ -33,7 +33,7 @@ public:
   Stereo acc=s;
   const int voices=juce::jlimit(2,8,p.stackVoices);
   const float amount=clamp(p.chaos*p.stackChaosAmt,0,1);
-  if(trackedHz!=cachedTrackedHz){
+  if(std::abs(trackedHz-cachedTrackedHz)>1.e-4f){
    cachedTrackedHz=trackedHz;
    trackedMidi=trackedHz>55.f?69.f+12.f*std::log2(trackedHz/440.f):0.f;
   }
@@ -43,9 +43,9 @@ public:
     detune=(nearestScaleMidi(trackedMidi+detune/100.f,p.stackKey,p.stackScale)-trackedMidi)*100.f;
    float pan=clamp(pans[(size_t)v].load()*p.stackWidth+chaos.signedRandom(v,3)*amount*.14f,-1,1);
    auto& c=cache[(size_t)v];
-   if(detune!=c.detune){c.detune=detune;c.targetRatio=std::pow(2.f,detune/1200.f);}
+   if(std::abs(detune-c.detune)>1.e-4f){c.detune=detune;c.targetRatio=std::pow(2.f,detune/1200.f);}
    c.ratio+=smoothing*(c.targetRatio-c.ratio);
-   if(pan!=c.pan){c.pan=pan;c.panL=equalPowerPanL(pan);c.panR=equalPowerPanR(pan);}
+   if(std::abs(pan-c.pan)>1.e-5f){c.pan=pan;c.panL=equalPowerPanL(pan);c.panR=equalPowerPanR(pan);}
    const float targetDelay=(float)((double)p.stackTime*sampleRate*.001*(v+1)/(double)voices);
    c.delay+=smoothing*(targetDelay-c.delay);
    const auto left=pitch.render(0,c.ratio,heads[(size_t)v][0],p.stackFormant,c.delay);

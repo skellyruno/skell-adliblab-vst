@@ -15,3 +15,5 @@ Known outstanding work: independent formant-preserving pitch shifting, true-peak
 - Fade STACK wet layers smoothly on bypass and re-enable instead of abruptly removing up to eight pitched voices; test both transition edges and the final transparent bypass.
 
 - Display the VST3's actual generated JUCE version in the UI footer instead of the stale hardcoded 0.3 label.
+
+- Clear GCC/Clang renderer warnings at their sources: use tolerance-based float cache invalidation; explicitly initialize Character NaN sentinels; expose JUCE double-precision processBlock overload; fix VoiceMap indentation. Preserve sample-accurate DSP and parameter automation.

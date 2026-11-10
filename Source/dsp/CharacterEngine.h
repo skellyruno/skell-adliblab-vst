@@ -16,11 +16,11 @@ public:
   enableAmount+=enableSmoothing*(enableTarget-enableAmount);
   if(!p.charOn && enableAmount<.00001f)return s;
   const float target=clamp(p.charIntensity,0,1);
-  if(p.charGlide!=cachedGlide) {
+  if(!std::isfinite(cachedGlide)||std::abs(p.charGlide-cachedGlide)>1.e-4f) {
    cachedGlide=p.charGlide;
    glideCoefficient=1.f/(1.f+(float)(sampleRate*p.charGlide*.001));
   }
-  if(p.charFormant!=cachedFormant) {
+  if(!std::isfinite(cachedFormant)||std::abs(p.charFormant-cachedFormant)>1.e-4f) {
    cachedFormant=p.charFormant;
    const float nominal=clamp(.022f*std::pow(2.f,p.charFormant/12.f),.001f,.3f);
    toneCoefficient=1.f-std::pow(1.f-nominal,(float)(44100.0/sampleRate));

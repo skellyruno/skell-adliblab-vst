@@ -309,6 +309,17 @@ static void testOnsetTimeConstants(){
  }
 }
 
+static void testCharacterCacheInitialization(){
+ adlib::CharacterEngine effect;adlib::ChaosEngine chaos;adlib::Params p;
+ effect.prepare(48000.);p.charOn=true;p.charIntensity=1.f;p.charFormant=7.f;p.charGlide=15.f;
+ adlib::Stereo a{};
+ for(int i=0;i<4000;++i)a=effect.tick({.22f,.22f},p,chaos);
+ assert(std::isfinite(a.l)&&std::isfinite(a.r));
+ p.charFormant=-7.f;p.charGlide=400.f;
+ for(int i=0;i<4000;++i)a=effect.tick({.22f,.22f},p,chaos);
+ assert(std::isfinite(a.l)&&std::isfinite(a.r));
+}
+
 static void testCharacterBypassClick(){
  adlib::CharacterEngine effect;adlib::ChaosEngine chaos;adlib::Params p;
  effect.prepare(48000.);
@@ -343,6 +354,7 @@ int main(){
  testClipVoiceStealClick();
  testOnsetTimeConstants();
  testCharacterBypassClick();
+ testCharacterCacheInitialization();
  testSafetyLimiterAndCorruptInput();
  testPitchAccuracy();
  std::cout << "DSP smoke PASS: 5 sample rates, reorder, throw, YIN pitch/noise, MIDI clips\n";

@@ -38,7 +38,7 @@ jobs:
           test "$(find ui-screenshots -name '*.png' | wc -l)" -eq 45
       - name: Upload screenshots and contact sheet
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: Skell-AdlibLab-Actual-JUCE-UI
           path: ui-screenshots/

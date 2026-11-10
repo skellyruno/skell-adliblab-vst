@@ -36,7 +36,7 @@ public:
   lastEnabled=enabled?1:0;
   for(int i=0;i<getNumChildComponents();++i){
    auto* child=getChildComponent(i);
-   if(child!=&on&&child!=&grip)child->setAlpha(enabled?1.f:.36f);
+   if(child!=&on&&child!=&grip)child->setAlpha(enabled?1.f:.56f);
   }
   repaint();
  }

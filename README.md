@@ -104,3 +104,30 @@ The graphic palette uses the requested colors. UI fonts fall back to system sans
 **Not production-certified:** Independent formant preservation and spectral morphing remain prototype algorithms. A JUCE build proves compilation, not plugin stability or actual CPU usage inside FL Studio. The safety soft clip is not a true-peak limiter, and dry latency remains intentionally zero while effects have their own artistic delays.
 
 The current Windows workflow uses JUCE 8 MIDI metadata iterators instead of deprecated legacy iteration, modern identity transforms, and current Node 24-compatible GitHub Actions checkout/upload versions.
+
+
+## Permanent SkellCore real-editor visual regression
+
+The development-only executable SkellAdlibLabUIRenderer uses the actual
+SkellAdlibLabProcessor and SkellAdlibLabEditor, linked to SkellCore::UIRenderer
+pinned to immutable commit 438bc74a86a40bf54cfa8089832a477822c8ccda.
+It is not included in the Windows VST3 binary.
+
+The GitHub Actions workflow .github/workflows/ui-screenshots.yml runs on changes
+to CMake, Source, Assets, or the renderer. It renders 44 real-editor PNGs and a
+contact sheet: Cosmic, Neon, Ivory, and Crimson themes at 800x500, 1024x640,
+1280x800, 1600x1000 and 1920x1200, plus bypass, MIDI-selected, and
+preset-parameter states at minimum and design sizes. Each scene is validated
+for blank frames, mismatched appearance and nested JUCE child bounds.
+
+Reproduce under Linux with the JUCE build requirements and Xvfb installed:
+
+    cmake -S . -B build-renderer -G Ninja -DCMAKE_BUILD_TYPE=Release -DSKELL_ADLIBLAB_BUILD_UI_RENDERER=ON
+    cmake --build build-renderer --target SkellAdlibLabUIRenderer --parallel 2
+    xvfb-run -a build-renderer/SkellAdlibLabUIRenderer --output ui-screenshots
+
+Known visual-test limitations: native JUCE PopupMenus render in separate
+desktop windows, outside the AudioProcessorEditor's component snapshot, so
+the current harness does not yet capture those popup pixels or mouse-hover
+states. Those need a desktop-window-grab/input test, not a fake screenshot.
+Windows VST3 is the only release target.

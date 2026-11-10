@@ -48,10 +48,20 @@ public:
   g.fillEllipse(inner);
   g.setColour(palette.text.withAlpha(.085f));g.drawEllipse(inner.reduced(1.f),.9f);
   const float trackRadius=radius-6.f;
-  juce::Path track,arc;
-  track.addCentredArc(centre.x,centre.y,trackRadius,trackRadius,0.f,start,end,true);
-  arc.addCentredArc(centre.x,centre.y,trackRadius,trackRadius,0.f,
-                    start+(end-start)*juce::jlimit(0.f,1.f,pos),true);
+  // Explicit open arc paths avoid diagonal connecting strokes in the JUCE renderer.
+  auto makeArc=[&](float from,float to){
+   juce::Path path;
+   constexpr int segments=48;
+   for(int i=0;i<=segments;++i){
+    const float angle=from+(to-from)*(float)i/(float)segments;
+    const float px=centre.x+std::sin(angle)*trackRadius;
+    const float py=centre.y-std::cos(angle)*trackRadius;
+    if(i==0)path.startNewSubPath(px,py);else path.lineTo(px,py);
+   }
+   return path;
+  };
+  const auto track=makeArc(start,end);
+  const auto arc=makeArc(start,start+(end-start)*juce::jlimit(0.f,1.f,pos));
   g.setColour(palette.border.brighter(.15f));
   g.strokePath(track,juce::PathStrokeType(3.2f,juce::PathStrokeType::curved,juce::PathStrokeType::rounded));
   if(hover){

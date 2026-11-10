@@ -168,6 +168,25 @@ static void testThrowTimingAndDuck(){
 }
 
 // Feedback controls subsequent repeats; zero feedback must keep the first echo.
+static void testStackBypassSmoothing(){
+ adlib::StackEngine stack;adlib::ChaosEngine chaos;adlib::Params p;
+ stack.prepare(48000.);p.stackOn=true;p.stackVoices=8;p.stackSpread=0;
+ p.stackTime=0.f;p.stackWidth=0.f;
+ adlib::Stereo before{},after{};
+ for(int i=0;i<24000;++i)before=stack.tick({.18f,.18f},p,chaos,0.f);
+ assert(before.l>.18f);
+ p.stackOn=false;
+ after=stack.tick({.18f,.18f},p,chaos,0.f);
+ assert(std::abs(after.l-before.l)<.008f);
+ for(int i=0;i<24000;++i)after=stack.tick({.18f,.18f},p,chaos,0.f);
+ assert(std::abs(after.l-.18f)<.0001f);
+ p.stackOn=true;
+ auto reenabled=stack.tick({.18f,.18f},p,chaos,0.f);
+ assert(std::abs(reenabled.l-after.l)<.008f);
+ for(int i=0;i<24000;++i)after=stack.tick({.18f,.18f},p,chaos,0.f);
+ assert(after.l>.18f);
+}
+
 static void testMeltHotSwap(){
  for(double sr:{22050.,44100.,48000.,96000.,192000.}){
   adlib::MeltEngine engine;engine.prepare(sr);
@@ -311,6 +330,7 @@ static void testCharacterBypassClick(){
 int main(){
  testAtomicModuleOrder();
  testMeltHotSwap();
+ testStackBypassSmoothing();
  testInvalidBpmThrow();
  for(double sampleRate:{22050.,44100.,48000.,96000.,192000.})runEngine(sampleRate);
  testThrowTimingAndDuck();

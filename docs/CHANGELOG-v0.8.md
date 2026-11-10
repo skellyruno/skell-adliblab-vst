@@ -11,3 +11,5 @@
 Validation: portable GCC ASan/UBSan DSP smoke, silent-tail denorm probes, zero allocations in the existing worst-case DSP benchmark, and static layout checks passed locally. Full JUCE compile, screenshots, and FL Studio host validation must be reported separately from those portable tests.
 
 Known outstanding work: independent formant-preserving pitch shifting, true-peak limiting, robust undo/preset semantics, native pop-up snapshots, in-host CPU and automation testing, and long-session repeated WAV-replacement memory analysis.
+
+- Fade STACK wet layers smoothly on bypass and re-enable instead of abruptly removing up to eight pitched voices; test both transition edges and the final transparent bypass.

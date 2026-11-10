@@ -11,7 +11,7 @@ public:
   for(auto& v:heads)for(auto& h:v)h={};
   for(auto& v:cache){v.detune=std::numeric_limits<float>::infinity();v.pan=std::numeric_limits<float>::infinity();v.ratio=1;v.targetRatio=1;v.delay=0;}
   smoothing=(float)(1.0-std::exp(-1.0/(sr*.012)));
-  cachedTrackedHz=0;
+  cachedTrackedHz=0;wetGain=0.f;
   if(!initialized)for(int i=0;i<8;i++){
    pans[(size_t)i].store((i-3.5f)/4.f);offsets[(size_t)i].store((i-3.5f)/4.f);
   }
@@ -24,7 +24,11 @@ public:
  float getVoicePitch(int i) const {return offsets[(size_t)juce::jlimit(0,7,i)].load();}
  Stereo tick(Stereo s,const Params& p,const ChaosEngine& chaos,float trackedHz) {
   pitch.push(s);
-  if(!p.stackOn)return s;
+  // Smooth both directions of module bypass. Switching a stack of detuned
+  // voices off instantly otherwise introduces a discontinuity at the host.
+  const float target=p.stackOn?1.f:0.f;
+  wetGain=flushTiny(wetGain+smoothing*(target-wetGain));
+  if(!p.stackOn&&wetGain<1.e-4f){wetGain=0.f;return s;}
   // Preserve the direct vocal level; STACK voices are additive wet layers.
   Stereo acc=s;
   const int voices=juce::jlimit(2,8,p.stackVoices);
@@ -47,7 +51,7 @@ public:
    const auto left=pitch.render(0,c.ratio,heads[(size_t)v][0],p.stackFormant,c.delay);
    const auto right=pitch.render(1,c.ratio,heads[(size_t)v][1],p.stackFormant,c.delay);
    const float mono=(left+right)*.5f;
-   const float level=.48f/voices;
+   const float level=(.48f/voices)*wetGain;
    acc.l+=mono*c.panL*level;
    acc.r+=mono*c.panR*level;
   }
@@ -69,7 +73,7 @@ private:
   return best;
  }
  struct Cached {float detune=0,ratio=1,targetRatio=1,delay=0,pan=0,panL=0,panR=0;};
- bool initialized=false;double sampleRate=44100;float smoothing=.001f;PitchFormantEngine pitch;
+ bool initialized=false;double sampleRate=44100;float smoothing=.001f,wetGain=0.f;PitchFormantEngine pitch;
  float cachedTrackedHz=0,trackedMidi=0;
  std::array<Cached,8>cache{};
  std::array<std::array<PitchFormantEngine::Head,2>,8> heads{};

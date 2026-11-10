@@ -18,7 +18,10 @@ public:
   const int historyLength=(int)history.size();
   for(int i=0;i<length;++i){int pos=(write-length+i+historyLength*2)%historyLength;v.clip[(size_t)i]=history[(size_t)pos];}
   v.active=length>0;v.length=length;v.repeat=0;v.tick=0;v.position=0;v.low={};v.started=false;
-  v.interval=juce::jmax(1,(int)(sampleRate*60.0/juce::jmax(20.0f,p.bpm)*division(p.throwDiv)));
+  // An invalid transport BPM must never be cast to an integer interval.
+  const double bpm=std::isfinite(p.bpm)&&p.bpm>=20.f&&p.bpm<=400.f
+    ?(double)p.bpm:120.0;
+  v.interval=juce::jmax(1,(int)(sampleRate*60.0/bpm*division(p.throwDiv)));
   updateVoice(v,p);
  }
  Stereo tick(Stereo s,const Params& p,const Events& e){

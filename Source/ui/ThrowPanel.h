@@ -7,7 +7,8 @@ public:
   combo("throwDiv",{"1/4","1/8","1/16","1/8.","1/8T","1/32","1/64"},180,64,90);
   knob("throwFeedback","FEEDBACK",17,252);knob("throwRepeats","REPEATS",84,252);knob("throwFilterStart","FILTER START",151,252);knob("throwFilterEnd","FILTER END",218,252);
   knob("throwPitchPerRepeat","PITCH",17,348);knob("throwDuck","DUCK",84,348);
-  toggle("throwReverse","REVERSE",154,350);toggle("throwPingPong","PING-PONG",154,380);
+  toggle("throwReverse","REVERSE",154,350).setBounds(154,350,110,24);
+  toggle("throwPingPong","PING-PONG",154,380).setBounds(154,380,110,24);
   fire.setButtonText("THROW NOW");fire.setBounds(163,409,105,29);fire.onClick=[&p]{p.triggerThrow();};addAndMakeVisible(fire);
  }
  void paint(juce::Graphics&g)override{

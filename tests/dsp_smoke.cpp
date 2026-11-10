@@ -42,6 +42,28 @@ static void runEngine(double rate) {
  std::cout << "  "<<rate<<"Hz: peak="<<peak<<" throw samples="<<throwSamples<<"\n";
 }
 
+// Host transport may return NaN/inf/zero BPM while starting playback.
+static void testInvalidBpmThrow(){
+ for(float bpm:{0.f,-1.f,std::numeric_limits<float>::quiet_NaN(),
+                std::numeric_limits<float>::infinity(),1000000.f}){
+  adlib::ThrowEngine engine;engine.prepare(48000.);
+  adlib::Params p;p.throwMode=2;p.throwDiv=2;p.bpm=bpm;p.throwDuck=0;
+  for(int i=0;i<13000;++i){
+   const float v=i<6000?.1f:0.f;
+   auto out=engine.tick({v,v},p,{});
+   assert(std::isfinite(out.l)&&std::isfinite(out.r));
+  }
+  engine.trigger(p);
+  float before=0,after=0;
+  for(int i=0;i<7200;++i){
+   auto out=engine.tick({0,0},p,{});
+   if(i<5999)before=std::max(before,std::abs(out.l));
+   else after=std::max(after,std::abs(out.l));
+  }
+  assert(before<1.e-7f&&after>0.f);
+ }
+}
+
 static void testClipBank() {
  adlib::Params p;
  adlib::ClipBank bank;
@@ -245,6 +267,7 @@ static void testCharacterBypassClick(){
 }
 
 int main(){
+ testInvalidBpmThrow();
  for(double sampleRate:{22050.,44100.,48000.,96000.,192000.})runEngine(sampleRate);
  testThrowTimingAndDuck();
  testThrowZeroFeedback();

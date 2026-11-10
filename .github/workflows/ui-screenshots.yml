@@ -2,7 +2,7 @@ name: AdlibLab / real JUCE UI screenshots
 on:
   push:
     branches: [main]
-    paths: ['CMakeLists.txt', 'Source/**', 'tests/ui_renderer.cpp', '.github/workflows/ui-screenshots.yml']
+    paths: ['CMakeLists.txt', 'Source/**', 'Assets/**', 'tests/ui_renderer.cpp', '.github/workflows/ui-screenshots.yml']
   pull_request:
   workflow_dispatch:
 permissions:

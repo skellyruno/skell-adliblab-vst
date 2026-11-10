@@ -6,7 +6,30 @@ namespace {
 using Layout=juce::AudioProcessorValueTreeState::ParameterLayout;
 void f(Layout& l,const char* id,const char* name,float lo,float hi,float def,float step=0.001f,float skew=1.f){
  juce::NormalisableRange<float>range(lo,hi,step,skew);
- l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{id,1},name,range,def));
+ // Make all JUCE attachments and hosts use the same compact unit-aware
+ // display. Formatting a slider before constructing its attachment is lost.
+ const juce::String key(id);
+ const auto attributes=juce::AudioParameterFloatAttributes()
+  .withStringFromValueFunction([key](float v,int){
+    if(key=="throwFilterStart"||key=="throwFilterEnd")
+     return v>=1000.f?juce::String(v/1000.f,1)+"k":juce::String(v,0)+"Hz";
+    if(key=="stackSpread")return juce::String(v,0)+"ct";
+    if(key=="stackTime"||key=="charGlide")return juce::String(v,0)+"ms";
+    if(key=="stackFormant"||key=="charFormant"||key=="throwPitchPerRepeat")
+     return juce::String(v,1)+"st";
+    if(key=="outputGain")return juce::String(v,1)+"dB";
+    if(key=="chaos")return juce::String(juce::roundToInt(v*100.f))+"%";
+    if(key=="charCrush"||key=="throwRepeats"||key=="meltRoot")return juce::String(v,0);
+    return juce::String(v,2);
+  })
+  .withValueFromStringFunction([key](const juce::String& text){
+    float x=text.getFloatValue();
+    if((key=="throwFilterStart"||key=="throwFilterEnd")
+       &&text.containsIgnoreCase("k"))x*=1000.f;
+    if(key=="chaos"&&text.containsChar('%'))x*=.01f;
+    return x;
+  });
+ l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{id,1},name,range,def,attributes));
 }
 void b(Layout&l,const char*id,const char*name,bool def){l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{id,1},name,def));}
 void c(Layout&l,const char*id,const char*name,std::initializer_list<const char*>choices,int def){
@@ -115,7 +138,7 @@ void SkellAdlibLabProcessor::processBlock(juce::AudioBuffer<float>&buffer,juce::
  const int n=buffer.getNumSamples(),channels=buffer.getNumChannels();
  if(channels==0||n==0)return;
  auto p=loadParams();
- if(auto*hostPlayHead=getPlayHead()) if(auto pos=hostPlayHead->getPosition()) if(auto bpm=pos->getBpm())p.bpm=(float)*bpm;
+ if(auto*hostPlayHead=getPlayHead()) if(auto pos=hostPlayHead->getPosition()) if(auto bpm=pos->getBpm())if(std::isfinite(*bpm)&&*bpm>=20.0&&*bpm<=400.0)p.bpm=(float)*bpm;
  route.setOrder(getModuleOrder());
  const auto*sample=meltSample.load(std::memory_order_acquire);
  mixSmooth.setTargetValue(p.mix);

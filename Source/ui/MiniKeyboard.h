@@ -16,16 +16,20 @@ public:
  void mouseExit(const juce::MouseEvent&e)override{if(!e.mods.isAnyMouseButtonDown())release();}
  void paint(juce::Graphics&g)override{
   const auto note=pressed>=0?pressed:processor.getNote();const float w=(float)getWidth()/15.f;
+  // Light skins must preserve the familiar white/black piano-key relationship.
+  const bool light=palette.background.getPerceivedBrightness()>.6f;
+  const auto whiteKey=light?juce::Colour(0xfffbf9f1):palette.text;
+  const auto blackKey=light?juce::Colour(0xff242824):palette.raised;
   g.setColour(palette.surface);g.fillRoundedRectangle(getLocalBounds().toFloat(),6);
   for(int white=0;white<15;++white){
    int midi=whiteNote(white);auto r=juce::Rectangle<float>(white*w+0.4f,1.f,w-1.2f,(float)getHeight()-2);
-   g.setColour(midi==note?palette.melt:palette.text);g.fillRoundedRectangle(r,3);
+   g.setColour(midi==note?palette.melt:whiteKey);g.fillRoundedRectangle(r,3);
    g.setColour(palette.background.withAlpha(.75f));g.drawRoundedRectangle(r,3,1);
    if(midi%12==0){g.setColour(midi==note?palette.background:palette.muted);g.setFont(Theme::mono(10));g.drawText(midi==48?"C3":midi==60?"C4":"C5",r.reduced(2).toNearestInt().withY(getHeight()-19),juce::Justification::centred);}
   }
   for(int black=0;black<10;++black){
    int key=blackNote(black);auto r=blackRect(key);
-   g.setColour(key==note?palette.melt:palette.raised);g.fillRoundedRectangle(r,3);
+   g.setColour(key==note?palette.melt:blackKey);g.fillRoundedRectangle(r,3);
    g.setColour(key==note?palette.background:palette.border);g.drawRoundedRectangle(r,3,1);
   }
  }

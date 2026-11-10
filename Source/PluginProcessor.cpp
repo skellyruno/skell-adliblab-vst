@@ -115,7 +115,7 @@ void SkellAdlibLabProcessor::processBlock(juce::AudioBuffer<float>&buffer,juce::
  const int n=buffer.getNumSamples(),channels=buffer.getNumChannels();
  if(channels==0||n==0)return;
  auto p=loadParams();
- if(auto*playHead=getPlayHead()) if(auto pos=playHead->getPosition()) if(auto bpm=pos->getBpm())p.bpm=(float)*bpm;
+ if(auto*hostPlayHead=getPlayHead()) if(auto pos=hostPlayHead->getPosition()) if(auto bpm=pos->getBpm())p.bpm=(float)*bpm;
  route.setOrder(getModuleOrder());
  const auto*sample=meltSample.load(std::memory_order_acquire);
  mixSmooth.setTargetValue(p.mix);
@@ -123,9 +123,9 @@ void SkellAdlibLabProcessor::processBlock(juce::AudioBuffer<float>&buffer,juce::
  float*left=buffer.getWritePointer(0);
  float*right=channels>1?buffer.getWritePointer(1):nullptr;
  float inMeter=0,outMeter=0;
- juce::MidiBuffer::Iterator it(midi);
- juce::MidiMessage message;int midiPosition=0;
- bool hasMidi=it.getNextEvent(message,midiPosition);
+ // JUCE 8 MidiBufferIterator: sample-accurate, allocation-free metadata.
+ auto midiIterator=midi.cbegin();
+ const auto midiEnd=midi.cend();
  if(reRollRequested.exchange(false))chaos.reRoll(p.chaosLock);
  if(throwRequested.exchange(false))route.throwEngine.trigger(p);
  if(int pad=auditionPadRequested.exchange(-1);juce::isPositiveAndBelow(pad,8))clips.noteOn(p.kbRoot+pad,1,p);
@@ -147,7 +147,8 @@ void SkellAdlibLabProcessor::processBlock(juce::AudioBuffer<float>&buffer,juce::
  uiMidiRead.store(readIndex,std::memory_order_release);
  if(int pad=recordPadRequested.exchange(-1);juce::isPositiveAndBelow(pad,8)&&recordReadyPad.load()<0){recordActive=pad;recordCount=recordSilent=0;recordStarted=false;}
  for(int i=0;i<n;++i){
-  while(hasMidi&&midiPosition<=i){
+  while(midiIterator!=midiEnd&&(*midiIterator).samplePosition<=i){
+   const auto message=(*midiIterator).getMessage();
    if(p.midiChannel==0||message.getChannel()==p.midiChannel){
     if(message.isNoteOn()){
      activeMidiNote.store(message.getNoteNumber());clips.noteOn(message.getNoteNumber(),message.getFloatVelocity(),p);
@@ -156,7 +157,7 @@ void SkellAdlibLabProcessor::processBlock(juce::AudioBuffer<float>&buffer,juce::
      clips.noteOff(message.getNoteNumber());activeMidiNote.store(-1);
     }
    }
-   hasMidi=it.getNextEvent(message,midiPosition);
+   ++midiIterator;
   }
   // Stop corrupted host samples from poisoning all recursive detectors.
   adlib::Stereo dry{adlib::sanitizeSample(left[i]),adlib::sanitizeSample(right?right[i]:left[i])};

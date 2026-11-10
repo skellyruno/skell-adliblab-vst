@@ -115,7 +115,7 @@ void SkellAdlibLabEditor::timerCallback(){
 void SkellAdlibLabEditor::paint(juce::Graphics&g){g.fillAll(canvas.getPalette().background);}
 void SkellAdlibLabEditor::resized(){
  float s=juce::jmin(getWidth()/1280.f,getHeight()/800.f);
- canvas.setTransform(juce::AffineTransform::identity);
+ canvas.setTransform(juce::AffineTransform{});
  canvas.setBounds(0,0,1280,800);
  canvas.setTransform(juce::AffineTransform::scale(s));
  processor.parameters.state.setProperty("editorWidth",getWidth(),nullptr);

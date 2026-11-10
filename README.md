@@ -40,7 +40,7 @@ For a private/local JUCE clone:
 cmake -S . -B build -DJUCE_PATH=/absolute/path/to/JUCE
 ```
 
-GitHub Actions runs a portable sanitizer-backed DSP regression test on Linux, then compiles and publishes the **Windows VST3 artifact only**. Linux is used for testing, not plugin output. There are no macOS builds or Standalone targets.
+GitHub Actions runs a portable sanitizer-backed DSP regression test on Linux, then compiles and publishes the **Windows VST3 artifact only**, packaged for a single extraction (no nested ZIP). Linux is used for testing, not plugin output. There are no macOS builds or Standalone targets.
 
 ## MIDI
 
@@ -102,3 +102,5 @@ The graphic palette uses the requested colors. UI fonts fall back to system sans
 - The second hardening pass zeroes inaudible recursive state in Onset, PitchTracker, CHARACTER, THROW, MELT and the Vocoder. Dedicated portable tests report zero subnormal outputs across 22.05, 48 and 192 kHz without host FTZ/DAZ. THROW stereo pan is now cached per repeat.
 
 **Not production-certified:** Independent formant preservation and spectral morphing remain prototype algorithms. A JUCE build proves compilation, not plugin stability or actual CPU usage inside FL Studio. The safety soft clip is not a true-peak limiter, and dry latency remains intentionally zero while effects have their own artistic delays.
+
+The current Windows workflow uses JUCE 8 MIDI metadata iterators instead of deprecated legacy iteration, modern identity transforms, and current Node 24-compatible GitHub Actions checkout/upload versions.

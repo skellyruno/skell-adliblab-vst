@@ -15,3 +15,5 @@ Limitations: CPU benchmark does not substitute actual FL Studio validation; form
 - Preview keyboard releases notes when dragged outside or destroyed.
 - Added portable state flushing for inaudible recursive tails; regression verifies no subnormal output/envelopes after silence without host FTZ/DAZ.
 - UI bypass now dims all module controls while preserving readable title, power switch and drag grip, updated immediately on click and on host automation via the editor timer.
+- Eliminated Windows MSVC deprecation/shadowing warnings: MIDI metadata iterator, identity transform, and host playhead naming. GitHub Actions checkout/upload upgraded to Node-24-based v5.
+- Windows artifact now stores the .vst3 folder directly in the GitHub artifact, eliminating nested/double ZIP extraction.

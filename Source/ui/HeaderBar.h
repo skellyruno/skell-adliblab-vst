@@ -21,19 +21,32 @@ public:
  std::function<void(int)> onThemeSelect;
  void refreshTheme(){setup(mix,palette.stack);setup(output,palette.melt);skull.repaint();repaint();}
  void paint(juce::Graphics&g)override{
-  g.setColour(palette.surface);g.fillRoundedRectangle(getLocalBounds().toFloat(),10.f);
-  g.setColour(palette.border);g.drawRoundedRectangle(getLocalBounds().toFloat().reduced(.7f),10.f,1.f);
-  g.setColour(palette.muted);g.setFont(Theme::mono(10));g.drawText("SKELL  /  AUDIO LAB",72,8,256,17,juce::Justification::left);
-  g.setColour(palette.text);g.setFont(Theme::display(28));g.drawText("ADLIB",70,25,106,33,juce::Justification::left);
-  g.setColour(palette.stack);g.drawText("LAB",174,25,87,33,juce::Justification::left);
-  g.setColour(palette.muted);g.setFont(Theme::mono(9));g.drawText(palette.name,269,34,73,18,juce::Justification::left);
-  g.setFont(Theme::mono(10));g.drawText("MIX",911,54,54,11,juce::Justification::centred);
-  g.drawText("OUTPUT",982,54,60,11,juce::Justification::centred);
-  g.drawText("INPUT",1076,10,72,15,juce::Justification::centredLeft);
-  g.setColour(palette.raised);g.fillRoundedRectangle(juce::Rectangle<float>(1076,31,88,8),3);
-  g.setColour(palette.melt);g.fillRoundedRectangle(juce::Rectangle<float>(1077,32,86*juce::jlimit(0.f,1.f,processor.getInputLevel()),6),2);
-
+  const auto r=getLocalBounds().toFloat();
+  g.setGradientFill(juce::ColourGradient(palette.raised.withAlpha(.82f),0.f,0.f,
+                                        palette.surface,r.getRight(),r.getBottom(),false));
+  g.fillRoundedRectangle(r.reduced(.5f),11.f);
+  g.setColour(palette.border.withAlpha(.85f));g.drawRoundedRectangle(r.reduced(.9f),10.5f,1.f);
+  g.setColour(palette.stack.withAlpha(.88f));g.fillRoundedRectangle(69.f,58.f,180.f,2.f,1.f);
+  g.setColour(palette.muted);g.setFont(Theme::mono(10));
+  g.drawText("SKELL AUDIO   /   VOCAL DESIGN",72,7,270,17,juce::Justification::left);
+  g.setColour(palette.text);g.setFont(Theme::display(28));
+  g.drawText("ADLIB",70,23,110,34,juce::Justification::left);
+  g.setColour(palette.stack);g.drawText("LAB",178,23,73,34,juce::Justification::left);
+  g.setColour(palette.muted);g.setFont(Theme::mono(9));
+  g.drawText(palette.name,268,36,77,16,juce::Justification::left);
+  g.setColour(palette.border.withAlpha(.85f));
+  g.drawVerticalLine(347,15.f,55.f);g.drawVerticalLine(802,15.f,55.f);g.drawVerticalLine(1064,15.f,55.f);
+  g.setColour(palette.muted);g.setFont(Theme::mono(10));
+  g.drawText("MIX",911,53,54,12,juce::Justification::centred);
+  g.drawText("OUTPUT",982,53,60,12,juce::Justification::centred);
+  g.drawText("INPUT",1076,9,72,15,juce::Justification::centredLeft);
+  const int lit=juce::roundToInt(12.f*juce::jlimit(0.f,1.f,processor.getInputLevel()));
+  for(int i=0;i<12;++i){
+   g.setColour((i<lit?(i>9?palette.chaos:palette.melt):palette.border).withAlpha(i<lit?1.f:.5f));
+   g.fillRoundedRectangle(1076.f+i*7.25f,31.f,5.2f,7.f,1.4f);
+  }
  }
+
 private:
  static void setup(juce::Slider&s,juce::Colour colour){s.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);s.setTextBoxStyle(juce::Slider::NoTextBox,false,0,0);s.setColour(juce::Slider::rotarySliderFillColourId,colour);}
  void parameter(const char*id,float value){

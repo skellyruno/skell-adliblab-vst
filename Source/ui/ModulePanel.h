@@ -51,18 +51,31 @@ public:
   repaint();
  }
  void paint(juce::Graphics&g)override{
-  auto r=getLocalBounds().toFloat().reduced(1.f);
-  g.setColour(palette.panel);g.fillRoundedRectangle(r,12);
-  g.setColour(palette.border);g.drawRoundedRectangle(r,12,1.1f);
-  g.setColour(accent().withAlpha(.11f));g.fillRoundedRectangle(r.withHeight(52),12);
-  g.setColour(accent());g.fillRoundedRectangle(2.f,1.f,3.f,50.f,1.f);
-  g.setColour(palette.text);g.setFont(Theme::display(17));g.drawText(title,19,12,178,28,juce::Justification::left);
-  g.setColour(palette.muted);g.setFont(Theme::mono(10));g.drawText("MOVE",236,38,45,12,juce::Justification::centred);
-  if(!on.getToggleState()){
-   g.setColour(palette.background.withAlpha(.12f));g.fillRoundedRectangle(1.f,53.f,288.f,400.f,10.f);
-   g.setColour(palette.muted);g.setFont(Theme::mono(10));g.drawText("BYPASS",120,16,80,19,juce::Justification::right);
+  const auto r=getLocalBounds().toFloat().reduced(1.f);
+  g.setGradientFill(juce::ColourGradient(palette.panel.brighter(.035f),r.getTopLeft(),
+                                        palette.surface,r.getBottomRight(),false));
+  g.fillRoundedRectangle(r,11.f);
+  g.setColour(palette.border.withAlpha(.85f));g.drawRoundedRectangle(r,11.f,1.f);
+  g.setGradientFill(juce::ColourGradient(accent().withAlpha(.15f),r.getTopLeft(),
+                                        accent().withAlpha(.055f),juce::Point<float>(r.getRight(),53.f),false));
+  g.fillRoundedRectangle(r.withHeight(52.f),10.f);
+  g.setColour(palette.border.withAlpha(.62f));g.drawHorizontalLine(53,4.f,286.f);
+  g.setColour(accent());g.fillRoundedRectangle(2.f,4.f,3.f,46.f,1.3f);
+  g.fillRoundedRectangle(18.f,52.f,35.f,2.f,1.f);
+  g.setColour(palette.text);g.setFont(Theme::display(17));
+  g.drawText(title,19,11,163,28,juce::Justification::left);
+  if(on.getToggleState()){
+   g.setColour(accent().withAlpha(.83f));g.setFont(Theme::mono(10));
+   g.drawText(juce::String(moduleId+1).paddedLeft('0',2),186,18,18,16,juce::Justification::centred);
+  }else{
+   g.setColour(palette.background.withAlpha(.14f));g.fillRoundedRectangle(1.f,54.f,288.f,399.f,9.f);
+   g.setColour(palette.muted);g.setFont(Theme::mono(10));
+   g.drawText("BYPASS",115,17,84,18,juce::Justification::right);
   }
+  g.setColour(palette.muted);g.setFont(Theme::mono(9));
+  g.drawText("MOVE",237,38,45,12,juce::Justification::centred);
  }
+
 protected:
  juce::Colour accent() const {return palette.accent(moduleId);}
  juce::Slider& knob(const char*id,juce::String name,int x,int y,int size=56){

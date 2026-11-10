@@ -20,6 +20,12 @@ public:
   const float v1=std::abs(lp2),v2=std::abs(lp1-lp2),v3=std::abs(input-lp1);
   float flux=juce::jmax(0.0f,v1-previous1)+juce::jmax(0.0f,v2-previous2)+juce::jmax(0.0f,v3-previous3);
   previous1=v1;previous2=v2;previous3=v3;
+  // Release tails to exact zero before they reach the denormal range.
+  if(a<1.e-18f){
+   fast=flushTiny(fast);slow=flushTiny(slow);
+   lp1=flushTiny(lp1);lp2=flushTiny(lp2);
+   previous1=flushTiny(previous1);previous2=flushTiny(previous2);previous3=flushTiny(previous3);
+  }
   bool hit=(cooldown==0 && fast>0.008f && (fast>slow*2.0f+0.007f || flux>0.07f));
   if(hit) cooldown=(int)(0.085*sr);else if(cooldown>0)--cooldown;
   Events e; e.hit=hit;e.envelope=fast;return e;

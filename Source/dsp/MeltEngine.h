@@ -17,7 +17,7 @@ public:
  Stereo tick(Stereo s,const Params&p,const ClipBank::Clip* sample,float pitchHz,float inputEnvelope){
   const bool usable=sample!=nullptr&&sample->mono.size()>=2;
   const float target=usable&&p.meltOn?clamp(p.meltAmount,0.f,1.f):0.f;
-  wetAmount+=wetSmoothing*(target-wetAmount);
+  wetAmount=flushTiny(wetAmount+wetSmoothing*(target-wetAmount));
   if(!usable|| (wetAmount<.00001f&&target==0.f))return s;
   if(sample!=lastSample){lastSample=sample;position=0;pitchRate=1;controlCountdown=0;}
   // Pitch tracking may update every sample: expensive exponentials only update
@@ -45,7 +45,7 @@ public:
   carrier*=envelope;
   position+=pitchRate*44100.f/(float)sampleRate;
   if(position>=(float)(length-1))position=0.f;
-  level+=(.01f*(1.f-clamp(p.meltSmooth,0.f,1.f))+.0002f)*(inputEnvelope-level);
+  level=flushTiny(level+(.01f*(1.f-clamp(p.meltSmooth,0.f,1.f))+.0002f)*(inputEnvelope-level));
   const float follow=juce::jmap(clamp(p.meltFollowLoudness,0.f,1.f),1.f,clamp(level*10.f,0.f,1.f));
   const float mono=(s.l+s.r)*.5f;
   float out=0;

@@ -52,14 +52,16 @@ public:
   effected.l=std::round(effected.l*levels)/levels;
   effected.r=std::round(effected.r*levels)/levels;
   // Lightweight tonal colour, not independent formant shifting.
-  tone.l+=toneCoefficient*(effected.l-tone.l);tone.r+=toneCoefficient*(effected.r-tone.r);
+  tone.l=flushTiny(tone.l+toneCoefficient*(effected.l-tone.l));
+  tone.r=flushTiny(tone.r+toneCoefficient*(effected.r-tone.r));
   effected.l=juce::jmap(.3f, tone.l, effected.l);
   effected.r=juce::jmap(.3f, tone.r, effected.r);
   float warble=.5f+.5f*std::sin(2*pi*4.2f*time);
   effected.l*=1.f-p.charDetune*.12f*warble;
   effected.r*=1.f+p.charDetune*.12f*warble;
   const float wet=clamp(intensity*enableAmount,0.f,1.f);
-  return {juce::jmap(wet,s.l,effected.l),juce::jmap(wet,s.r,effected.r)};
+  return {flushTiny(juce::jmap(wet,s.l,effected.l)),
+          flushTiny(juce::jmap(wet,s.r,effected.r))};
  }
 private:
  double sampleRate=44100;int64_t phase=0;int holdCounter=0;Stereo held{},filter{},tone{};

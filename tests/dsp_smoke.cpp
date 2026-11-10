@@ -5,6 +5,7 @@
 #include <cassert>
 #include <iostream>
 #include <algorithm>
+#include <limits>
 
 static void runEngine(double rate) {
  adlib::ChainRouter router;

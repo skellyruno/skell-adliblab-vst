@@ -12,11 +12,14 @@ constexpr int kPadCount = 8;
 constexpr int kMaxStackVoices = 8;
 constexpr float pi = juce::MathConstants<float>::pi;
 inline float clamp (float x, float lo, float hi) { return juce::jlimit(lo, hi, x); }
+// Flush numbers at inaudible -360 dBFS to keep portable recursive DSP safe
+// even outside hosts that set the hardware FTZ/DAZ flags.
+inline float flushTiny(float x) noexcept {return std::abs(x)<1.e-18f?0.f:x;}
 // Protect recursive DSP from malformed floating-point host and file input.
 inline float sanitizeSample(float x) noexcept {
- return std::isfinite(x)?clamp(x,-8.f,8.f):0.f;
+ return std::isfinite(x)?flushTiny(clamp(x,-8.f,8.f)):0.f;
 }
-// Transparent at usual levels; asymptotes to ±1 above 0.85. Not true peak.
+// Transparent at usual levels; asymptotes to +/-1 above 0.85. Not true peak.
 inline float softLimitSample(float x) noexcept {
  x=sanitizeSample(x);
  const float mag=std::abs(x);

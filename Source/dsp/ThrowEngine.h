@@ -38,7 +38,7 @@ public:
    }
    if(!v.started)continue;
    // Recompute if host automation changes pitch, repeat count, feedback, or filter.
-   if(v.pitch!=p.throwPitchPerRepeat||v.feedback!=p.throwFeedback||v.filterStart!=p.throwFilterStart||v.filterEnd!=p.throwFilterEnd||v.repeats!=p.throwRepeats)
+   if(v.pitch!=p.throwPitchPerRepeat||v.feedback!=p.throwFeedback||v.filterStart!=p.throwFilterStart||v.filterEnd!=p.throwFilterEnd||v.repeats!=p.throwRepeats||v.pingPong!=p.throwPingPong)
     updateVoice(v,p);
    if(v.position<(float)v.length-1){
     float pos=p.throwReverse?(float)(v.length-1)-v.position:v.position;
@@ -46,13 +46,13 @@ public:
     float frac=clamp(pos-(float)i,0,1);
     Stereo a=v.clip[(size_t)i],b=v.clip[(size_t)i+1];
     Stereo sample{juce::jmap(frac,a.l,b.l),juce::jmap(frac,a.r,b.r)};
-    v.low.l+=v.alpha*(sample.l-v.low.l);v.low.r+=v.alpha*(sample.r-v.low.r);
+    v.low.l=flushTiny(v.low.l+v.alpha*(sample.l-v.low.l));
+    v.low.r=flushTiny(v.low.r+v.alpha*(sample.r-v.low.r));
     const float fadeSamples=(float)(sampleRate*.004);
     const float edge=juce::jmin(1.f,juce::jmin(v.position,v.length-1.f-v.position)/fadeSamples);
     const float gain=v.gain*juce::jmax(0.f,edge);
-    const float pan=(p.throwPingPong?(v.repeat%2==0?-.85f:.85f):0.f);
-    wet.l+=v.low.l*gain*equalPowerPanL(pan);
-    wet.r+=v.low.r*gain*equalPowerPanR(pan);
+    wet.l+=v.low.l*gain*v.panL;
+    wet.r+=v.low.r*gain*v.panR;
     v.position+=v.pitchRatio;
    }
   }
@@ -60,7 +60,7 @@ public:
   const float activity=clamp((std::abs(wet.l)+std::abs(wet.r))*.75f,0.f,1.f);
   const float desiredDuck=clamp(p.throwDuck,0,1)*activity*.60f;
   const float smoothing=desiredDuck>duckGain?duckAttack:duckRelease;
-  duckGain+=smoothing*(desiredDuck-duckGain);
+  duckGain=flushTiny(duckGain+smoothing*(desiredDuck-duckGain));
   return {s.l*(1-duckGain)+wet.l,s.r*(1-duckGain)+wet.r};
  }
  float activity() const {float a=0;for(const auto& v:voices)if(v.active)a+=1;return a/(float)voices.size();}
@@ -70,10 +70,14 @@ private:
   std::vector<Stereo> clip;bool active=false,started=false;int length=0,repeat=0,tick=0,interval=1;
   float position=0,pitchRatio=1,alpha=.2f,gain=0;
   float pitch=999,feedback=-1,filterStart=-1,filterEnd=-1;int repeats=-1;
+  bool pingPong=false;float panL=1.f,panR=1.f;
   Stereo low{};
  };
  void updateVoice(Voice&v,const Params&p){
   v.pitch=p.throwPitchPerRepeat;v.feedback=p.throwFeedback;v.filterStart=p.throwFilterStart;v.filterEnd=p.throwFilterEnd;v.repeats=p.throwRepeats;
+  v.pingPong=p.throwPingPong;
+  const float pan=v.pingPong?(v.repeat%2==0?-.85f:.85f):0.f;
+  v.panL=equalPowerPanL(pan);v.panR=equalPowerPanR(pan);
   v.pitchRatio=std::pow(2.f,clamp(v.pitch,-12,12)*(float)v.repeat/12.f);
   v.gain=std::pow(clamp(v.feedback,0,.99f),(float)v.repeat)*.75f;
   const float t=(float)v.repeat/(float)juce::jmax(1,p.throwRepeats-1);

@@ -99,5 +99,6 @@ The graphic palette uses the requested colors. UI fonts fall back to system sans
 - MIDI keyboard gestures use a bounded lock-free event queue to preserve note-off/note-on ordering on glissandos; stolen clip voices carry a 4ms release tail.
 - Input/sample validation suppresses non-finite values, output subnormals are zeroed, and captured/imported audio is bounded to ±8 before processing.
 - Regression tests include five host rates, sound continuity, allocation checks, and non-gating CPU timing.
+- The second hardening pass zeroes inaudible recursive state in Onset, PitchTracker, CHARACTER, THROW, MELT and the Vocoder. Dedicated portable tests report zero subnormal outputs across 22.05, 48 and 192 kHz without host FTZ/DAZ. THROW stereo pan is now cached per repeat.
 
 **Not production-certified:** Independent formant preservation and spectral morphing remain prototype algorithms. A JUCE build proves compilation, not plugin stability or actual CPU usage inside FL Studio. The safety soft clip is not a true-peak limiter, and dry latency remains intentionally zero while effects have their own artistic delays.

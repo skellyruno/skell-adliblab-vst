@@ -21,7 +21,7 @@ public:
   constexpr int window=128;
   float energy=0;
   for(int j=0;j<window;++j){const float x=ring[(size_t)((idx-1-j*step)&4095)];energy+=x*x;}
-  if(energy<.0004f){frequency*=.8f;return;}
+  if(energy<.0004f){frequency=flushTiny(frequency*.8f);return;}
   float cumulative=0,best=1000;
   int bestLag=-1,firstValley=-1;
   // Difference and cumulative mean normalized difference, including low lags
@@ -44,7 +44,7 @@ public:
    }
   }
   const int picked=firstValley>0?firstValley:(best<.22f?bestLag:-1);
-  if(picked<=0){frequency*=.92f;return;}
+  if(picked<=0){frequency=flushTiny(frequency*.92f);return;}
   float refined=(float)picked;
   if(picked>1&&picked<maxLag){
    const float a=difference[(size_t)(picked-1)],b=difference[(size_t)picked],c=difference[(size_t)(picked+1)];

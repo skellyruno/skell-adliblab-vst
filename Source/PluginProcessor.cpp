@@ -131,7 +131,10 @@ void SkellAdlibLabProcessor::processBlock(juce::AudioBuffer<float>&buffer,juce::
  if(int pad=auditionPadRequested.exchange(-1);juce::isPositiveAndBelow(pad,8))clips.noteOn(p.kbRoot+pad,1,p);
  // Drain all UI events in order: a fast glissando must not lose note-offs.
  if(uiMidiOverflow.exchange(false,std::memory_order_acq_rel)) {
+  // A dropped note-off must never leave a preview clip held indefinitely.
+  // Discard the stale queue before accepting any new gestures.
   clips.releaseAll();activeMidiNote.store(-1);
+  uiMidiRead.store(uiMidiWrite.load(std::memory_order_acquire),std::memory_order_release);
  }
  auto readIndex=uiMidiRead.load(std::memory_order_relaxed);
  const auto writeIndex=uiMidiWrite.load(std::memory_order_acquire);

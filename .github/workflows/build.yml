@@ -23,6 +23,10 @@ jobs:
         run: |
           g++ -std=c++17 -O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined -Itests/stubs tests/dsp_smoke.cpp -o dsp-smoke
           ./dsp-smoke
+      - name: Check silent-tail denormals without host FTZ
+        run: |
+          g++ -std=c++17 -O2 -Itests/stubs tests/denorm_probe.cpp -o denorm-probe
+          ./denorm-probe
       - name: Check real-time allocations and profile worst-case DSP CPU
         run: |
           g++ -std=c++17 -O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined -Itests/stubs tests/realtime_alloc.cpp -o realtime-alloc

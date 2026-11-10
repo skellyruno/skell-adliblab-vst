@@ -6,8 +6,12 @@
 class MiniKeyboard final:public juce::Component {
 public:
  explicit MiniKeyboard(SkellAdlibLabProcessor&p,const Theme::Palette&pal):processor(p),palette(pal){}
+ ~MiniKeyboard()override{release();}
  void mouseDown(const juce::MouseEvent&e)override{if(e.mods.isPopupMenu())return;pressed=noteAt(e.position);processor.requestMidiOn(pressed);repaint();}
- void mouseDrag(const juce::MouseEvent&e)override{if(pressed<0)return;int n=noteAt(e.position);if(n!=pressed){processor.requestMidiOff(pressed);pressed=n;processor.requestMidiOn(pressed);repaint();}}
+ void mouseDrag(const juce::MouseEvent&e)override{
+  if(pressed<0)return;
+  if(!getLocalBounds().contains(e.getPosition())){release();return;}
+  int n=noteAt(e.position);if(n!=pressed){processor.requestMidiOff(pressed);pressed=n;processor.requestMidiOn(pressed);repaint();}}
  void mouseUp(const juce::MouseEvent&)override{release();}
  void mouseExit(const juce::MouseEvent&e)override{if(!e.mods.isAnyMouseButtonDown())release();}
  void paint(juce::Graphics&g)override{

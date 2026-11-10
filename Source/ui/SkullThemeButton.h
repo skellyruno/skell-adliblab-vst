@@ -11,7 +11,6 @@ public:
   g.setColour(palette.raised);g.fillRoundedRectangle(r,9);
   g.setColour(a.withAlpha(hover?1.f:.55f));g.drawRoundedRectangle(r,9,1.4f);
   juce::Graphics::ScopedSaveState save(g);
-  auto bounds=juce::Rectangle<float>(7,5,34,37);
   g.addTransform(juce::AffineTransform::translation((r.getWidth()-48.f)*.5f,(r.getHeight()-48.f)*.5f));
   juce::Path bone;
   bone.startNewSubPath(11,15);bone.cubicTo(11,5,36,5,37,15);bone.cubicTo(42,23,35,27,34,30);

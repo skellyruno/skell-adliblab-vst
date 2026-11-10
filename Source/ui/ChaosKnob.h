@@ -3,7 +3,7 @@
 #include "../PluginProcessor.h"
 class ChaosKnob final:public juce::Component {
 public:
- explicit ChaosKnob(SkellAdlibLabProcessor&p,const Theme::Palette&pal):processor(p),palette(pal),attach(p.parameters,"chaos",dial),lockAttach(p.parameters,"chaosLock",lock){
+ explicit ChaosKnob(SkellAdlibLabProcessor&p,const Theme::Palette&pal):palette(pal),attach(p.parameters,"chaos",dial),lockAttach(p.parameters,"chaosLock",lock){
   dial.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
   dial.setTextBoxStyle(juce::Slider::TextBoxBelow,false,80,22);
   dial.setColour(juce::Slider::rotarySliderFillColourId,palette.chaos);
@@ -23,7 +23,7 @@ public:
   g.setColour(palette.muted);g.setFont(Theme::mono(10));g.drawText("HIT MUTATOR",118,7,103,19,juce::Justification::right);
  }
 private:
- SkellAdlibLabProcessor&processor;const Theme::Palette&palette;
+ const Theme::Palette&palette;
  juce::Slider dial;juce::ToggleButton lock;juce::TextButton roll;
  juce::AudioProcessorValueTreeState::SliderAttachment attach;
  juce::AudioProcessorValueTreeState::ButtonAttachment lockAttach;

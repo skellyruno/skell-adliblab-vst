@@ -8,9 +8,13 @@ public:
  void filesDropped(const juce::StringArray&paths,int x,int)override{if(paths.size())processor.loadWav(juce::File(paths[0]),padAt(x));repaint();}
  void paint(juce::Graphics&g)override{
   auto w=(float)getWidth()/8.f;
+  const int note=processor.getNote();
+  const int root=(int)std::lround(processor.parameters.getRawParameterValue("kbRoot")->load());
   for(int i=0;i<8;++i){auto r=juce::Rectangle<float>(i*w+2,2,w-5,(float)getHeight()-4);
-   g.setColour(palette.surface);g.fillRoundedRectangle(r,6);
-   g.setColour(i%2?palette.character.withAlpha(.35f):palette.stack.withAlpha(.35f));g.drawRoundedRectangle(r,6,1.f);
+   const bool active=note>=0&&((note-root)%8+8)%8==i;
+   g.setColour(active?palette.raised:palette.surface);g.fillRoundedRectangle(r,6);
+   g.setColour(active?palette.melt:(i%2?palette.character:palette.stack).withAlpha(.45f));
+   g.drawRoundedRectangle(r,6,active?1.8f:1.f);
    g.setColour(palette.text);g.setFont(Theme::mono(10));auto*clip=processor.clips.getClip(i);
    g.drawFittedText(clip?clip->name:juce::String("PAD ")+juce::String(i+1),r.toNearestInt().reduced(6).withHeight(18),juce::Justification::centred,1);
    auto mid=r.getCentreY()+8;

@@ -24,7 +24,7 @@ private:
   void paint(juce::Graphics&)override;
   void reorder(int id,int displacement);
   void layoutModules();
-  void refreshMeters();
+  void refreshMeters(bool clipsChanged);
   void applyTheme(int);
   int getThemeIndex()const{return themeIndex;}
   const Theme::Palette&getPalette()const{return palette;}
@@ -33,6 +33,7 @@ private:
   SkellAdlibLabEditor&editor;
   Theme::Palette palette;
   int themeIndex=0;
+  int lastDisplayedNote=-1;
   HeaderBar header;
   StackPanel stack;
   CharacterPanel character;

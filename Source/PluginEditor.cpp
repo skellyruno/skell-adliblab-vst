@@ -23,11 +23,11 @@ SkellAdlibLabEditor::Canvas::Canvas(SkellAdlibLabProcessor&p,SkellAdlibLabEditor
  }
  width.textFromValueFunction=[](double d){return juce::String(d,2);};
  gain.textFromValueFunction=[](double d){return juce::String(d,1)+"dB";};
- width.setBounds(1028,602,91,98);gain.setBounds(1132,602,91,98);
+ width.setBounds(1028,601,91,91);gain.setBounds(1132,601,91,91);
  limiter.setButtonText("SOFT CLIP");formant.setButtonText("FORMANT LOCK");
  velIntensity.setButtonText("VEL > INT");velTail.setButtonText("VEL > TAIL");reverse.setButtonText("ALT REVERSE");
  for(auto*toggle:{&limiter,&formant,&velIntensity,&velTail,&reverse})addAndMakeVisible(toggle);
- limiter.setBounds(1053,701,161,28);
+ limiter.setBounds(1053,713,161,25);
  formant.setBounds(286,753,147,25);velIntensity.setBounds(447,753,131,25);
  velTail.setBounds(583,753,130,25);reverse.setBounds(726,753,148,25);
  header.refreshTheme();for(auto*module:modules)module->refreshTheme();
@@ -64,9 +64,9 @@ void SkellAdlibLabEditor::Canvas::paint(juce::Graphics&g){
  g.setColour(palette.muted);g.setFont(Theme::mono(10));
  g.drawText("WIDTH",1030,695,89,13,juce::Justification::centred);
  g.drawText("GAIN",1135,695,90,13,juce::Justification::centred);
- g.drawText("LEVEL",1033,741,57,14,juce::Justification::left);
- g.setColour(palette.raised);g.fillRoundedRectangle(juce::Rectangle<float>(1089,744,132,8),3);
- g.setColour(palette.melt);g.fillRoundedRectangle(juce::Rectangle<float>(1090,745,130*juce::jlimit(0.f,1.f,processor.getOutputLevel()),6),2);
+ g.drawText("LEVEL",1033,746,57,14,juce::Justification::left);
+ g.setColour(palette.raised);g.fillRoundedRectangle(juce::Rectangle<float>(1089,749,132,8),3);
+ g.setColour(palette.melt);g.fillRoundedRectangle(juce::Rectangle<float>(1090,750,130*juce::jlimit(0.f,1.f,processor.getOutputLevel()),6),2);
  g.setColour(palette.muted);g.setFont(Theme::mono(9));g.drawText("SKELL AUDIO    /    ADLIBLAB 0.3",28,785,290,12,juce::Justification::left);
  g.drawText("SKULL = SWITCH THEME",1049,785,195,12,juce::Justification::right);
 }
@@ -76,14 +76,21 @@ void SkellAdlibLabEditor::Canvas::layoutModules(){
 }
 void SkellAdlibLabEditor::Canvas::reorder(int id,int displacement){
  auto order=processor.getModuleOrder();int from=0;for(int i=0;i<4;++i)if(order[(size_t)i]==id)from=i;
- int to=juce::jlimit(0,3,from+(int)std::round(displacement/312.f));if(from==to)return;
+ // Even a short, intentional grip drag moves to the adjacent slot;
+ // longer drags can skip multiple modules.
+ int direction=displacement>0?1:-1;
+ int distance=std::abs(displacement);
+ int steps=juce::jmax(1,(distance+156)/312);
+ int to=juce::jlimit(0,3,from+direction*steps);if(from==to)return;
  auto moved=order[(size_t)from];
  if(from<to)for(int i=from;i<to;++i)order[(size_t)i]=order[(size_t)(i+1)];
  else for(int i=from;i>to;--i)order[(size_t)i]=order[(size_t)(i-1)];
  order[(size_t)to]=moved;processor.setModuleOrder(order);layoutModules();
 }
-void SkellAdlibLabEditor::Canvas::refreshMeters(){
- header.repaint();keyboard.repaint();repaint(1020,737,221,20);bank.repaint();
+void SkellAdlibLabEditor::Canvas::refreshMeters(bool clipsChanged){
+ header.repaint();keyboard.repaint();repaint(1020,743,221,21);
+ const int currentNote=processor.getNote();
+ if(clipsChanged||currentNote!=lastDisplayedNote){lastDisplayedNote=currentNote;bank.repaint();}
 }
 SkellAdlibLabEditor::SkellAdlibLabEditor(SkellAdlibLabProcessor&p)
  :AudioProcessorEditor(&p),canvas(p,*this),processor(p){
@@ -99,9 +106,9 @@ SkellAdlibLabEditor::SkellAdlibLabEditor(SkellAdlibLabProcessor&p)
 SkellAdlibLabEditor::~SkellAdlibLabEditor(){stopTimer();canvas.setLookAndFeel(nullptr);}
 void SkellAdlibLabEditor::applyLookAndFeelPalette(const Theme::Palette&p){lookAndFeel.applyPalette(p);canvas.repaint();}
 void SkellAdlibLabEditor::timerCallback(){
- processor.collectRecordedClip();
+ const bool clipChanged=processor.collectRecordedClip();
  if(canvas.getThemeIndex()!=processor.getThemeIndex())canvas.applyTheme(processor.getThemeIndex());
- canvas.refreshMeters();
+ canvas.refreshMeters(clipChanged);
 }
 void SkellAdlibLabEditor::paint(juce::Graphics&g){g.fillAll(canvas.getPalette().background);}
 void SkellAdlibLabEditor::resized(){

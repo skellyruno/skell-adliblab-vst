@@ -6,7 +6,7 @@
 class DragGrip final:public juce::Component {
 public:
  std::function<void(int)>onDrop;
- explicit DragGrip(const Theme::Palette&pal):palette(pal){setTooltip("Drag left or right to rearrange modules");}
+ explicit DragGrip(const Theme::Palette&pal):palette(pal){}
  void paint(juce::Graphics&g)override{
   g.setColour(palette.muted);
   for(int y=0;y<3;++y)for(int x=0;x<2;++x)g.fillEllipse((float)x*6+6,(float)y*6+5,2.5f,2.5f);

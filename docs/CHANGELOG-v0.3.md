@@ -25,3 +25,10 @@
 - `MELT` remains an experimental vocoder/carrier cross synthesis. Safety clipping is not certified true-peak limiting.
 - GitHub Actions still needs to compile and package Windows and macOS VST3; successful CI is not proof of host playback stability.
 - No standalone UI screenshots or FL Studio load/close/automation stress test were available here.
+
+### Follow-up compile and UI fixes
+- Removed unsupported `Component::setTooltip` calls on two non-button widgets (macOS Clang compile failure).
+- Reduced the OUTPUT knob area and moved its toggle/readouts to eliminate the overlap.
+- Made module reordering responsive to short deliberate drag gestures.
+- Reduced idle clip-bank repaints and emphasized the active MIDI pad.
+- Replaced deprecated `MemoryBlock::replaceWith` and corrected a few narrowing conversions in saved-state code.

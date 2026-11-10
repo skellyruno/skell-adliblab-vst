@@ -219,7 +219,7 @@ void SkellAdlibLabProcessor::loadWav(const juce::File&file,int padOrMelt){
  if(!reader->read(&temp,0,(int)sourceLength,0,true,true))return;
  auto sample=std::make_unique<adlib::ClipBank::Clip>();
  sample->name=file.getFileNameWithoutExtension();
- auto destLength=juce::jlimit(2,220500,(int)std::round(sourceLength*44100.0/reader->sampleRate));
+ auto destLength=juce::jlimit(2,220500,(int)std::round((double)sourceLength*44100.0/reader->sampleRate));
  sample->mono.resize((size_t)destLength);
  for(int i=0;i<destLength;++i){
   double src=(double)i*reader->sampleRate/44100.0;
@@ -252,7 +252,7 @@ void SkellAdlibLabProcessor::getStateInformation(juce::MemoryBlock&dest){
  auto size=mel?juce::jmin((int)mel->mono.size(),220500):0;
  out.writeInt(size);out.writeString(mel?mel->name:juce::String());
  if(size)out.write(mel->mono.data(),(size_t)size*sizeof(float));
- dest.replaceWith(out.getData(),out.getDataSize());
+ dest.replaceAll(out.getData(),out.getDataSize());
 }
 
 void SkellAdlibLabProcessor::setStateInformation(const void*data,int bytes){
@@ -279,7 +279,8 @@ void SkellAdlibLabProcessor::setStateInformation(const void*data,int bytes){
   if(count==0){if(i<8)clips.clear(i);else meltSample.store(nullptr);continue;}
   auto clip=std::make_unique<adlib::ClipBank::Clip>();clip->name=name;
   clip->mono.resize((size_t)count);
-  if(in.read(clip->mono.data(),(size_t)count*sizeof(float))!=(size_t)count*sizeof(float))break;
+  const int byteCount=count*(int)sizeof(float);
+  if(in.read(clip->mono.data(),byteCount)!=byteCount)break;
   if(i<8)clips.publish(i,std::move(clip));else publishMelt(std::move(clip));
  }
 }

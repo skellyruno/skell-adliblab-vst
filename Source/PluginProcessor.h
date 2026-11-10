@@ -40,6 +40,8 @@ public:
  void requestMidiOff(int note){midiOffRequested.store(note);}
  void armRecording(int pad){if(juce::isPositiveAndBelow(pad,8))recordPadRequested.store(pad);}
  bool collectRecordedClip();
+ int getThemeIndex()const{return juce::jlimit(0,3,(int)parameters.state.getProperty("themeIndex",0));}
+ void setThemeIndex(int theme){parameters.state.setProperty("themeIndex",juce::jlimit(0,3,theme),nullptr);}
  void reRoll(){reRollRequested.store(true);}
  void triggerThrow(){throwRequested.store(true);}
  void setModuleOrder(std::array<int,4>);

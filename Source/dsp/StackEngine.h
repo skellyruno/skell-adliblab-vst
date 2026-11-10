@@ -9,7 +9,8 @@ public:
  void prepare(double sr) {
   sampleRate=sr;pitch.prepare(sr);
   for(auto& v:heads)for(auto& h:v)h={};
-  for(auto& v:cache){v.detune=std::numeric_limits<float>::infinity();v.pan=std::numeric_limits<float>::infinity();}
+  for(auto& v:cache){v.detune=std::numeric_limits<float>::infinity();v.pan=std::numeric_limits<float>::infinity();v.ratio=1;v.targetRatio=1;v.delay=0;}
+  smoothing=(float)(1.0-std::exp(-1.0/(sr*.012)));
   cachedTrackedHz=0;
   if(!initialized)for(int i=0;i<8;i++){
    pans[(size_t)i].store((i-3.5f)/4.f);offsets[(size_t)i].store((i-3.5f)/4.f);
@@ -24,7 +25,8 @@ public:
  Stereo tick(Stereo s,const Params& p,const ChaosEngine& chaos,float trackedHz) {
   pitch.push(s);
   if(!p.stackOn)return s;
-  Stereo acc=s*.7f;
+  // Preserve the direct vocal level; STACK voices are additive wet layers.
+  Stereo acc=s;
   const int voices=juce::jlimit(2,8,p.stackVoices);
   const float amount=clamp(p.chaos*p.stackChaosAmt,0,1);
   if(trackedHz!=cachedTrackedHz){
@@ -37,11 +39,13 @@ public:
     detune=(nearestScaleMidi(trackedMidi+detune/100.f,p.stackKey,p.stackScale)-trackedMidi)*100.f;
    float pan=clamp(pans[(size_t)v].load()*p.stackWidth+chaos.signedRandom(v,3)*amount*.14f,-1,1);
    auto& c=cache[(size_t)v];
-   if(detune!=c.detune){c.detune=detune;c.ratio=std::pow(2.f,detune/1200.f);}
+   if(detune!=c.detune){c.detune=detune;c.targetRatio=std::pow(2.f,detune/1200.f);}
+   c.ratio+=smoothing*(c.targetRatio-c.ratio);
    if(pan!=c.pan){c.pan=pan;c.panL=equalPowerPanL(pan);c.panR=equalPowerPanR(pan);}
-   const int delay=(int)((double)p.stackTime*sampleRate*.001*(v+1)/(double)voices);
-   const auto left=pitch.render(0,c.ratio,heads[(size_t)v][0],p.stackFormant,delay);
-   const auto right=pitch.render(1,c.ratio,heads[(size_t)v][1],p.stackFormant,delay);
+   const float targetDelay=(float)((double)p.stackTime*sampleRate*.001*(v+1)/(double)voices);
+   c.delay+=smoothing*(targetDelay-c.delay);
+   const auto left=pitch.render(0,c.ratio,heads[(size_t)v][0],p.stackFormant,c.delay);
+   const auto right=pitch.render(1,c.ratio,heads[(size_t)v][1],p.stackFormant,c.delay);
    const float mono=(left+right)*.5f;
    const float level=.48f/voices;
    acc.l+=mono*c.panL*level;
@@ -64,8 +68,8 @@ private:
   }
   return best;
  }
- struct Cached {float detune=0,ratio=1,pan=0,panL=0,panR=0;};
- bool initialized=false;double sampleRate=44100;PitchFormantEngine pitch;
+ struct Cached {float detune=0,ratio=1,targetRatio=1,delay=0,pan=0,panL=0,panR=0;};
+ bool initialized=false;double sampleRate=44100;float smoothing=.001f;PitchFormantEngine pitch;
  float cachedTrackedHz=0,trackedMidi=0;
  std::array<Cached,8>cache{};
  std::array<std::array<PitchFormantEngine::Head,2>,8> heads{};

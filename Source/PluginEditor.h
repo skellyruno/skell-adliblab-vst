@@ -16,6 +16,7 @@ public:
  ~SkellAdlibLabEditor()override;
  void paint(juce::Graphics&)override;
  void resized()override;
+ void applyLookAndFeelPalette(const Theme::Palette&);
 private:
  class Canvas final:public juce::Component {
  public:
@@ -24,9 +25,14 @@ private:
   void reorder(int id,int displacement);
   void layoutModules();
   void refreshMeters();
+  void applyTheme(int);
+  int getThemeIndex()const{return themeIndex;}
+  const Theme::Palette&getPalette()const{return palette;}
  private:
   SkellAdlibLabProcessor&processor;
   SkellAdlibLabEditor&editor;
+  Theme::Palette palette;
+  int themeIndex=0;
   HeaderBar header;
   StackPanel stack;
   CharacterPanel character;
@@ -39,8 +45,8 @@ private:
   juce::ToggleButton limiter,formant,velIntensity,velTail,reverse;
   juce::AudioProcessorValueTreeState::SliderAttachment widthAtt,gainAtt;
   juce::AudioProcessorValueTreeState::ButtonAttachment limiterAtt,formantAtt,velIntensityAtt,velTailAtt,reverseAtt;
-  std::array<ModulePanel*,4> modules;
- } canvas;
+  std::array<ModulePanel*,4>modules;
+ }canvas;
  void timerCallback()override;
  SkellAdlibLabProcessor&processor;
  LabLookAndFeel lookAndFeel;

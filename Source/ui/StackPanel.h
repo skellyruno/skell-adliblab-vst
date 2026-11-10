@@ -2,7 +2,7 @@
 #include "ModulePanel.h"
 class StackPanel final:public ModulePanel {
 public:
- explicit StackPanel(SkellAdlibLabProcessor&p):ModulePanel(p,0,"STACK",Theme::stack,"stackOn"),map(p){
+ explicit StackPanel(SkellAdlibLabProcessor&p,const Theme::Palette&pal):ModulePanel(p,pal,0,"STACK","stackOn"),map(p,pal){
   combo("stackVoices",{"2","3","4","5","6","7","8"},20,65,105);
   addAndMakeVisible(map);map.setBounds(20,109,249,120);
   knob("stackSpread","SPREAD",17,252);knob("stackFormant","FORMANT",84,252);knob("stackTime","TIME",151,252);knob("stackWidth","WIDTH",218,252);

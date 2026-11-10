@@ -100,8 +100,49 @@ static void testPitchAccuracy() {
  assert(tracker.getHz()<10.f); // No persistent false note lock on white noise.
 }
 
+// THROW regression: dry vocal must not be ducked when no echoes are audible,
+// and a manual throw must respect the first tempo-synced division.
+static void testThrowTimingAndDuck(){
+ adlib::ThrowEngine engine;
+ adlib::Params p;
+ p.throwMode=2;p.throwDiv=2;p.throwDuck=1.f;p.throwFeedback=.8f;
+ engine.prepare(48000.);
+ for(int i=0;i<26000;++i){
+  const auto in=.18f*std::sin(2.f*adlib::pi*220.f*i/48000.f);
+  const auto out=engine.tick({in,in},p,{});
+  assert(std::abs(out.l-in)<1.e-6f); // no throw = zero attenuation
+ }
+ engine.trigger(p);
+ float maxBefore=0,maxAfter=0;
+ const int delay=6000; // 1/16 note at 120 BPM = 6000 samples
+ for(int i=0;i<13000;++i){
+  auto out=engine.tick({0,0},p,{});
+  if(i<delay-1)maxBefore=std::max(maxBefore,std::abs(out.l));
+  else maxAfter=std::max(maxAfter,std::abs(out.l));
+ }
+ assert(maxBefore<1.e-7f);
+ assert(maxAfter>.002f);
+}
+
+static void testSeparatePhraseEvents(){
+ adlib::PhraseTracker tracker;
+ tracker.prepare(48000);
+ int syllables=0,words=0;
+ for(int i=0;i<24000;++i){
+  adlib::Events e;
+  // Two syllables separated by an 80ms gap, then a 160ms word end.
+  e.envelope=i<5000?.1f:i<9000?0.f:i<15500?.1f:0.f;
+  tracker.tick(e);
+  syllables+=e.syllableEnd;words+=e.wordEnd;
+ }
+ assert(syllables==2);
+ assert(words==1);
+}
+
 int main(){
  for(double sampleRate:{22050.,44100.,48000.,96000.,192000.})runEngine(sampleRate);
+ testThrowTimingAndDuck();
+ testSeparatePhraseEvents();
  adlib::Vocoder voc;voc.prepare(44100);
  for(int i=0;i<1000;++i)assert(std::isfinite(voc.tick(.3f,.1f,.3f)));
  testClipBank();

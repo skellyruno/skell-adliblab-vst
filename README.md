@@ -2,9 +2,9 @@
 
 # skell-adliblab-vst
 
-**Skell AdlibLab** — an experimental adlib-designer VST3/Standalone project for JUCE 8 / CMake. Derived from the supplied `skell-vst-template-main(1).zip` starter. The GitHub repository also contains an existing SkellCore foundation; the AdlibLab CMake target preserves and links the reusable SkellCore DSP/UI targets without replacing that shared library.
+**Skell AdlibLab** — an experimental Windows VST3 adlib designer for JUCE 8 / CMake. Derived from the supplied `skell-vst-template-main(1).zip` starter. The GitHub repository also contains an existing SkellCore foundation; the AdlibLab CMake target preserves and links the reusable SkellCore DSP/UI targets without replacing that shared library.
 
-> **Development status: v0.2 source prototype, not a verified production VST3.** The DSP smoke test and static parameter checks pass. A real JUCE build, host validation, microphone/vocal listening tests, and CPU profiling have not been completed here. The advanced pitch/formant and spectral-morph features described in the original brief are not yet implemented at production quality.
+> **Development status: v0.4 (experimental).** DSP regression checks pass locally and the Windows VST3 builds via GitHub Actions. This is not yet FL Studio host-validated or production certified. Advanced formant preservation and spectral-envelope morphing remain unimplemented.
 
 ## Interface & features implemented
 
@@ -31,17 +31,7 @@ cmake --build build --config Release --parallel 2
 ```
 
 VST3 output: `build/SkellAdlibLab_artefacts/Release/VST3/Skell AdlibLab.vst3`
-Standalone: `build/SkellAdlibLab_artefacts/Release/Standalone/Skell AdlibLab.exe`
-
-### macOS (Xcode)
-
-```bash
-cmake -S . -B build -G Xcode
-cmake --build build --config Release --parallel 2
-```
-
-VST3 output: `build/SkellAdlibLab_artefacts/Release/VST3/Skell AdlibLab.vst3`
-Standalone app: `build/SkellAdlibLab_artefacts/Release/Standalone/Skell AdlibLab.app`
+Copy the extracted `.vst3` directory to `C:\Program Files\Common Files\VST3\` and rescan plugins in FL Studio.
 
 For a private/local JUCE clone:
 
@@ -49,7 +39,7 @@ For a private/local JUCE clone:
 cmake -S . -B build -DJUCE_PATH=/absolute/path/to/JUCE
 ```
 
-GitHub Actions is configured to run a sanitizer-backed DSP regression test before building Windows VST3/Standalone. The initial repository upload may use a temporary compressed source bundle (due to connector limitations); CI expands it and commits the extracted sources as normal tracked files if Actions has contents-write permission.
+GitHub Actions runs portable sanitizer-backed DSP tests on Linux, then compiles and publishes the **Windows VST3 artifact only**. There are no macOS builds or Standalone targets.
 
 ## MIDI
 
@@ -59,14 +49,14 @@ The plug-in declares `NEEDS_MIDI_INPUT TRUE` and `acceptsMidi() == true`. Some D
 
 `Source/dsp/PitchFormantEngine.h` exposes `prepare(sampleRate)`, `push(Stereo)`, and `render(channel, pitchRatio, Head&, formantSemitones)`. The shared ring is populated once per audio sample; each rendering voice holds independent phase state. To reuse it in another plugin, include `PitchFormantEngine.h`, prepare once outside the callback, call `push()` per input frame, then call `render()` for each desired voice. `formantSemitones` is currently reserved: a shared FFT analysis / identity-phase-locked, envelope-preserving resynthesis stage must replace the granular prototype before claiming genuine independent pitch/formant shifting. Do not assume a full choir-grade engine.
 
-## v0.2 improvements
+## Improvements through v0.4
 
 - STACK scale-lock respects the selected key and scale; ratio and stereo-pan coefficients are cached when unchanged, reducing trigonometric work.
 - THROW interpolates pitched repeat samples, fades playback edges, and caches filter, gain and pitch settings once per repeat/automation change to reduce per-sample CPU.
 - MIDI clip bank applies a 2 ms attack, 6 ms release and short end-of-clip fade; 16 simultaneous voices steal in round-robin order.
 - On-screen keyboard supports mouse press, drag and note release; the default interface width is 1024 px (still resizable at fixed aspect ratio).
 - Pitch detection now uses a voiced/unvoiced-aware YIN-style difference function that selects the first genuine periodicity, avoiding octave-down subharmonic locks; the DSP tests check pitch accuracy and noise rejection.
-- The two build errors caught by Windows/macOS CI were corrected: a mixed-type `auto` declaration in LookAndFeel and the missing keyboard processor reference.
+- Earlier JUCE build errors were corrected: a mixed-type `auto` declaration in LookAndFeel and the missing keyboard processor reference.
 - Regression tests exercise 22.05, 44.1, 48, 96 and 192 kHz, chain reordering, throw activity and MIDI clip note release, including ASan/UBSan in CI.
 
 ## Validation
@@ -79,11 +69,11 @@ g++ -std=c++17 -O2 -Wall -Wextra -Itests/stubs tests/dsp_smoke.cpp -o dsp_smoke
 ./dsp_smoke
 ```
 
-**The test shim is not JUCE and cannot validate plugin compilation or host behaviour.** All real builds use `JUCE_PATH` or fetch JUCE. The complete plugin was NOT compiled or auditioned in the archive-generation environment because network resolution of `github.com` was unavailable and there was no local JUCE source checkout.
+**The test shim is not JUCE and cannot validate plugin compilation or host behaviour.** Actual compilation runs via Windows GitHub Actions; audition and load/close testing in FL Studio remain outstanding.
 
-## Known v0.1 gaps and priorities
+## Remaining gaps and priorities
 
-1. **Build/host validation:** compile on Windows/macOS CI, resolve any JUCE 8 API issues, test VST3 in FL Studio, Ableton and REAPER. Validate saved-state restoration and DAW automation.
+1. **Host validation:** test the Windows VST3 in FL Studio, Ableton and REAPER. Validate saved-state restoration and DAW automation.
 2. **Audio correctness:** replace granular pitch shifting with one FFT analysis, N identity-phase-locked resynthesis streams, real formant preservation and scale-aware tuning. Report measured wet-path latency and compensate dry/wet and MIDI output correctly.
 3. **Realtime hardening:** implement optional true dual-route crossfade for reorder, full sample-accurate MIDI events and an explicit lock-free clip and state synchronization plan; profile worst-case CPU/heap allocations.
 4. **Throw refinement:** proper syllable vs word segmentation, a lookahead phrase tracker, non-aliased pitch steps, and repeat-length/velocity tail scaling.
@@ -94,5 +84,9 @@ g++ -std=c++17 -O2 -Wall -Wextra -Itests/stubs tests/dsp_smoke.cpp -o dsp_smoke
 ## Audio/data notes
 
 Each loaded sample is limited to 5 s and downsampled to 44.1 kHz mono (220,500 floats maximum). Host state embeds up to 220,500 float samples for each of eight pads plus one MELT sample. This may produce a host preset of several megabytes; avoid using extremely long sample files. Loaded clips are retained until the plugin is destroyed so audio callbacks can read published immutable pointers without locking.
+
+Latest v0.4 improvements: live THROW activity visualization, MELT waveform preview, eased MELT bypass/loop playback, correct first throw when feedback is zero, and Windows-only packaging.
+
+See [v0.4 changelog](docs/CHANGELOG-v0.4.md).
 
 The graphic palette uses the requested colors. UI fonts fall back to system sans-serif and monospace for this revision; fonts have not been bundled.

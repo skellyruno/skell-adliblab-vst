@@ -1,3 +1,5 @@
+**Current build target: Windows VST3 only (no Standalone or macOS plugin builds).**
+
 # skell-adliblab-vst
 
 **Skell AdlibLab** — an experimental adlib-designer VST3/Standalone project for JUCE 8 / CMake. Derived from the supplied `skell-vst-template-main(1).zip` starter. The GitHub repository also contains an existing SkellCore foundation; the AdlibLab CMake target preserves and links the reusable SkellCore DSP/UI targets without replacing that shared library.
@@ -47,7 +49,7 @@ For a private/local JUCE clone:
 cmake -S . -B build -DJUCE_PATH=/absolute/path/to/JUCE
 ```
 
-GitHub Actions is configured to run a sanitizer-backed DSP regression test before building Windows and macOS VST3/Standalone. The initial repository upload may use a temporary compressed source bundle (due to connector limitations); CI expands it and commits the extracted sources as normal tracked files if Actions has contents-write permission.
+GitHub Actions is configured to run a sanitizer-backed DSP regression test before building Windows VST3/Standalone. The initial repository upload may use a temporary compressed source bundle (due to connector limitations); CI expands it and commits the extracted sources as normal tracked files if Actions has contents-write permission.
 
 ## MIDI
 

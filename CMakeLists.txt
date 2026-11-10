@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(SkellAdlibLab VERSION 0.2.0 LANGUAGES C CXX)
+project(SkellAdlibLab VERSION 0.4.0 LANGUAGES C CXX)
 
 include(FetchContent)
 if(DEFINED JUCE_PATH AND EXISTS "${JUCE_PATH}/CMakeLists.txt")
@@ -18,7 +18,7 @@ juce_add_plugin(SkellAdlibLab
   BUNDLE_ID "uno.skellyr.adliblab"
   PLUGIN_MANUFACTURER_CODE SkAu
   PLUGIN_CODE AdL1
-  FORMATS VST3 Standalone
+  FORMATS VST3
   PRODUCT_NAME "Skell AdlibLab"
   IS_SYNTH FALSE
   NEEDS_MIDI_INPUT TRUE

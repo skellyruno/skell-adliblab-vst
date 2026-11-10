@@ -16,7 +16,12 @@ for part in 'StackPanel CharacterPanel ThrowPanel MeltPanel ClipBankView MiniKey
  assert (root/'Source/ui'/f'{part}.h').exists(),part
 for part in 'ChainRouter OnsetDetector PhraseTracker PitchTracker PitchFormantEngine StackEngine CharacterEngine ThrowEngine MeltEngine Vocoder ClipBank ChaosEngine'.split():
  assert (root/'Source/dsp'/f'{part}.h').exists(),part
-assert 'FORMATS VST3 Standalone' in (root/'CMakeLists.txt').read_text()
+assert re.search(r'\bFORMATS\s+VST3\s*\n', (root/'CMakeLists.txt').read_text()), 'Expected VST3 only'
+workflow=(root/'.github/workflows/build.yml').read_text()
+assert 'build-windows:' in workflow
+assert 'build-macos:' not in workflow and 'macos-latest' not in workflow
+assert 'Standalone' not in workflow
+assert 'Skell-AdlibLab-Windows-VST3' in workflow
 assert 'NEEDS_MIDI_INPUT TRUE' in (root/'CMakeLists.txt').read_text()
 assert 'createLayout()' in header
 print(f"Project static checks PASS: {len(ids)} parameters, {len(ui_ids)} UI bindings")

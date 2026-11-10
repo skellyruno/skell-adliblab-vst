@@ -75,7 +75,7 @@ private:
  void updateVoice(Voice&v,const Params&p){
   v.pitch=p.throwPitchPerRepeat;v.feedback=p.throwFeedback;v.filterStart=p.throwFilterStart;v.filterEnd=p.throwFilterEnd;v.repeats=p.throwRepeats;
   v.pitchRatio=std::pow(2.f,clamp(v.pitch,-12,12)*(float)v.repeat/12.f);
-  v.gain=std::pow(clamp(v.feedback,0,.99f),(float)(v.repeat+1))*.75f;
+  v.gain=std::pow(clamp(v.feedback,0,.99f),(float)v.repeat)*.75f;
   const float t=(float)v.repeat/(float)juce::jmax(1,p.throwRepeats-1);
   const float start=juce::jmax(20.f,p.throwFilterStart),end=juce::jmax(20.f,p.throwFilterEnd);
   const float frequency=std::exp(juce::jmap(t,std::log(start),std::log(end)));

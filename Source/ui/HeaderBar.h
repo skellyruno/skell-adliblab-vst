@@ -65,7 +65,7 @@ private:
  }
  void showSettings(){juce::PopupMenu menu;menu.addItem(1,"About Skell AdlibLab");menu.addItem(2,"Low quality mode");menu.addItem(3,"Normal quality mode");menu.addItem(4,"High quality mode");
   juce::Component::SafePointer<HeaderBar>safe(this);
-  menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&settings),[safe](int result){if(!safe)return;if(result==1)juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::InfoIcon,"Skell AdlibLab","VST3 / Standalone • experimental audio engine");else if(result>=2&&result<=4)safe->parameter("latencyMode",(float)(result-2));});
+  menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&settings),[safe](int result){if(!safe)return;if(result==1)juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::InfoIcon,"Skell AdlibLab","Windows VST3 • experimental audio engine");else if(result>=2&&result<=4)safe->parameter("latencyMode",(float)(result-2));});
  }
  SkellAdlibLabProcessor&processor;const Theme::Palette&palette;SkullThemeButton skull;juce::Slider mix,output;
  juce::AudioProcessorValueTreeState::SliderAttachment mixAtt,outputAtt;

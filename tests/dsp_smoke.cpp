@@ -124,6 +124,44 @@ static void testThrowTimingAndDuck(){
  assert(maxAfter>.002f);
 }
 
+// Feedback controls subsequent repeats; zero feedback must keep the first echo.
+static void testThrowZeroFeedback(){
+ adlib::ThrowEngine engine; adlib::Params p;
+ engine.prepare(48000); p.throwMode=2; p.throwDiv=2;
+ p.throwFeedback=0.f; p.throwRepeats=4; p.throwDuck=0.f;
+ for(int i=0;i<14000;++i)engine.tick({i<1000?.5f:0.f,i<1000?.5f:0.f},p,{});
+ engine.trigger(p);
+ float first=0,second=0;
+ for(int i=0;i<17000;++i){
+  auto out=engine.tick({},p,{});
+  if(i<6000)continue;
+  if(i<12000)first=std::max(first,std::abs(out.l));
+  else second=std::max(second,std::abs(out.l));
+ }
+ assert(first>.0001f);assert(second<.00001f);
+}
+
+// Arbitrary non-zero end points must not cause a carrier snap at loop boundaries.
+static void testMeltLoopAndBypass(){
+ adlib::MeltEngine melt;adlib::Params p;
+ melt.prepare(44100);p.meltOn=true;p.meltMode=1;p.meltAmount=1.f;
+ p.meltFollowLoudness=0.f;p.meltFollowPitch=0.f;
+ adlib::ClipBank::Clip sample;
+ sample.mono.resize(441);
+ for(int i=0;i<441;++i)sample.mono[(size_t)i]=(float)i/440.f;
+ float prev=0,maxStep=0;
+ for(int i=0;i<5000;++i){auto out=melt.tick({},p,&sample,0,1.f);
+  if(i>1500)maxStep=std::max(maxStep,std::abs(out.l-prev));
+  prev=out.l;
+ }
+ assert(maxStep<.055f);
+ p.meltOn=false;
+ for(int i=0;i<5400;++i){auto out=melt.tick({.2f,.2f},p,&sample,0,1.f);
+  assert(std::isfinite(out.l));
+  if(i==5399)assert(std::abs(out.l-.2f)<.0003f);
+ }
+}
+
 static void testSeparatePhraseEvents(){
  adlib::PhraseTracker tracker;
  tracker.prepare(48000);
@@ -142,6 +180,8 @@ static void testSeparatePhraseEvents(){
 int main(){
  for(double sampleRate:{22050.,44100.,48000.,96000.,192000.})runEngine(sampleRate);
  testThrowTimingAndDuck();
+ testThrowZeroFeedback();
+ testMeltLoopAndBypass();
  testSeparatePhraseEvents();
  adlib::Vocoder voc;voc.prepare(44100);
  for(int i=0;i<1000;++i)assert(std::isfinite(voc.tick(.3f,.1f,.3f)));

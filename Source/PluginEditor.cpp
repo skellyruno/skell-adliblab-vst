@@ -88,7 +88,7 @@ void SkellAdlibLabEditor::Canvas::reorder(int id,int displacement){
  order[(size_t)to]=moved;processor.setModuleOrder(order);layoutModules();
 }
 void SkellAdlibLabEditor::Canvas::refreshMeters(bool clipsChanged){
- header.repaint();keyboard.repaint();repaint(1020,743,221,21);
+ header.repaint(1059,8,110,42);keyboard.repaint();throwPanel.repaint(20,109,249,120);repaint(1020,743,221,21);
  const int currentNote=processor.getNote();
  if(clipsChanged||currentNote!=lastDisplayedNote){lastDisplayedNote=currentNote;bank.repaint();}
 }

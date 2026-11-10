@@ -21,6 +21,7 @@ public:
   auto a=palette.melt;
   g.setColour(palette.raised);g.fillRoundedRectangle(r,9);
   g.setColour(a.withAlpha(hover?1.f:.55f));g.drawRoundedRectangle(r,9,1.4f);
+  if(hover){g.setColour(a.withAlpha(.2f));g.drawRoundedRectangle(r.reduced(2.f),8.f,2.f);}
   juce::Graphics::ScopedSaveState save(g);
   g.addTransform(juce::AffineTransform::translation((r.getWidth()-48.f)*.5f,(r.getHeight()-48.f)*.5f));
   juce::Path bone;
@@ -34,7 +35,8 @@ public:
   nose.startNewSubPath(24,29);nose.lineTo(21,34);nose.lineTo(27,34);nose.closeSubPath();
   g.fillPath(eye1);g.fillPath(eye2);g.fillPath(nose);
   for(int i=0;i<3;++i)g.drawLine(19.f+i*5.f,35.f,19.f+i*5.f,39.f,1.3f);
-  g.setColour(a.withAlpha(hover?1.f:.55f));g.drawEllipse(11,8,26,26,1.0f);
+  g.setColour(a.withAlpha(hover?1.f:.65f));g.drawEllipse(11,8,26,26,1.0f);
+  g.setColour(a);g.fillEllipse(35.f,35.f,5.f,5.f);
  }
 private:const Theme::Palette&palette;
 };

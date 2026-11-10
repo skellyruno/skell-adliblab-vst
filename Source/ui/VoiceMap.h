@@ -12,7 +12,14 @@ public:
   int count=juce::jlimit(2,8,2+(int)std::lround(processor.parameters.getRawParameterValue("stackVoices")->load()));
   for(int i=0;i<count;++i){float pan=processor.getVoicePan(i),pitch=processor.getVoicePitch(i);
    float x=juce::jmap(pan,-1.f,1.f,10.f,r.getWidth()-10),y=juce::jmap(pitch,-1.f,1.f,r.getHeight()-10,10.f);
-   g.setColour(palette.stack.withAlpha(i==dragIndex?1.f:.78f));g.fillEllipse(x-4,y-4,8,8);
+   const bool selected=i==dragIndex;
+   g.setColour(palette.stack.withAlpha(selected?.22f:.10f));
+   g.fillEllipse(x-9.f,y-9.f,18.f,18.f);
+   g.setColour(selected?palette.text:palette.stack);
+   g.fillEllipse(x-6.f,y-6.f,12.f,12.f);
+   g.setColour(palette.background);
+   g.setFont(Theme::mono(9.f));
+   g.drawText(juce::String(i+1),(int)(x-5.f),(int)(y-6.f),10,12,juce::Justification::centred,false);
   }
   g.setColour(palette.muted);g.setFont(Theme::mono(10));g.drawText("PAN / PITCH",8,2,100,14,juce::Justification::left);
  }
@@ -20,7 +27,7 @@ public:
   float best=1.e9f;dragIndex=-1;
   int count=juce::jlimit(2,8,2+(int)std::lround(processor.parameters.getRawParameterValue("stackVoices")->load()));
   for(int i=0;i<count;++i){float x=juce::jmap(processor.getVoicePan(i),-1.f,1.f,10.f,(float)getWidth()-10),y=juce::jmap(processor.getVoicePitch(i),-1.f,1.f,(float)getHeight()-10,10.f);float d=std::hypot(e.position.x-x,e.position.y-y);if(d<best){best=d;dragIndex=i;}}
-  if(best>23)dragIndex=-1;
+  if(best>17)dragIndex=-1;
   mouseDrag(e);
  }
  void mouseDrag(const juce::MouseEvent&e)override{if(dragIndex<0)return;float pan=juce::jmap(e.position.x,10.f,(float)getWidth()-10,-1.f,1.f),pitch=juce::jmap(e.position.y,10.f,(float)getHeight()-10,1.f,-1.f);processor.setVoicePosition(dragIndex,juce::jlimit(-1.f,1.f,pan),juce::jlimit(-1.f,1.f,pitch));repaint();}

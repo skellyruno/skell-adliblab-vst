@@ -54,8 +54,12 @@ public:
     v.low.l=flushTiny(v.low.l+v.alpha*(sample.l-v.low.l));
     v.low.r=flushTiny(v.low.r+v.alpha*(sample.r-v.low.r));
     const float fadeSamples=(float)(sampleRate*.004);
-    const float edge=juce::jmin(1.f,juce::jmin(v.position,v.length-1.f-v.position)/fadeSamples);
-    const float gain=v.gain*juce::jmax(0.f,edge);
+    // Very short divisions may restart a repeat before reaching the clip's
+    // natural tail. Fade before that clock boundary to avoid a hard cut.
+    const float distance=juce::jmin(v.position,v.length-1.f-v.position);
+    const float untilRepeat=(float)juce::jmax(0,v.interval-v.tick);
+    const float edge=clamp(juce::jmin(distance,untilRepeat)/fadeSamples,0.f,1.f);
+    const float gain=v.gain*edge;
     wet.l+=v.low.l*gain*v.panL;
     wet.r+=v.low.r*gain*v.panR;
     v.position+=v.pitchRatio;

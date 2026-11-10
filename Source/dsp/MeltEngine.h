@@ -18,7 +18,16 @@ public:
   const bool usable=sample!=nullptr&&sample->mono.size()>=2;
   const float target=usable&&p.meltOn?clamp(p.meltAmount,0.f,1.f):0.f;
   wetAmount=flushTiny(wetAmount+wetSmoothing*(target-wetAmount));
-  if(!usable|| (wetAmount<.00001f&&target<=0.f))return s;
+  // If a patch clears the carrier while MELT is audible, fade out the
+  // retained immutable sample instead of switching to dry in one sample.
+  if(!usable){
+   if(lastSample==nullptr||wetAmount<.00001f){
+    lastSample=nullptr;previousSample=nullptr;crossfadeRemaining=0;
+    return s;
+   }
+   sample=lastSample;
+  }
+  if(wetAmount<.00001f&&target<=0.f)return s;
   if(sample!=lastSample){
    // The old clip is immutable and retained by the processor. Blend the last
    // rendered carrier into a newly loaded sample over 12ms, never allocating

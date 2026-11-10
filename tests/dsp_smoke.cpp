@@ -338,7 +338,55 @@ static void testCharacterBypassClick(){
  assert(std::abs(effect.tick({.12f,.12f},p,chaos).l-.12f)<.001f);
 }
 
+// Regression for short tempo divisions: an echo whose source is longer than
+// the interval must fade at the repeat boundary instead of hard-cutting.
+static void testThrowShortDivisionBoundary(){
+ for(double sr:{22050.,48000.,96000.}){
+  adlib::ThrowEngine engine;engine.prepare(sr);
+  adlib::Params p;p.bpm=400.f;p.throwMode=2;p.throwDiv=6;
+  p.throwFeedback=.95f;p.throwRepeats=5;p.throwDuck=0.f;
+  p.throwFilterStart=18000.f;p.throwFilterEnd=18000.f;
+  for(int i=0;i<(int)(sr*.5);++i)engine.tick({.7f,.7f},p,{});
+  engine.trigger(p);
+  float previous=0,maximumJump=0,maximumEcho=0;
+  for(int i=0;i<(int)(sr*.07);++i){
+   const auto out=engine.tick({},p,{});
+   maximumJump=std::max(maximumJump,std::abs(out.l-previous));
+   maximumEcho=std::max(maximumEcho,std::abs(out.l));
+   previous=out.l;
+  }
+  assert(maximumEcho>.015f);
+  assert(maximumJump<.025f);
+ }
+}
+
+// Removing a loaded MELT carrier while the effect is at 100% wet must use
+// the same smoothing contract as normal bypass, without dereferencing null.
+static void testMeltSampleClearFade(){
+ for(double sr:{22050.,48000.,96000.}){
+  adlib::MeltEngine engine;engine.prepare(sr);
+  adlib::Params p;p.meltMode=1;p.meltOn=true;p.meltAmount=1.f;
+  p.meltFollowPitch=0.f;p.meltFollowLoudness=0.f;
+  adlib::ClipBank::Clip clip;clip.mono.assign(44100,.75f);
+  float previous=0;
+  for(int i=0;i<(int)(sr*.085);++i)
+   previous=engine.tick({0.f,0.f},p,&clip,0.f,1.f).l;
+  assert(previous>.5f);
+  const float first=engine.tick({0.f,0.f},p,nullptr,0.f,1.f).l;
+  assert(std::abs(first-previous)<.012f);
+  float last=first;
+  for(int i=0;i<(int)(sr*.35);++i){
+   const auto out=engine.tick({0.f,0.f},p,nullptr,0.f,1.f);
+   assert(std::isfinite(out.l)&&std::isfinite(out.r));
+   last=out.l;
+  }
+  assert(std::abs(last)<.0001f);
+ }
+}
+
 int main(){
+ testThrowShortDivisionBoundary();
+ testMeltSampleClearFade();
  testAtomicModuleOrder();
  testMeltHotSwap();
  testStackBypassSmoothing();

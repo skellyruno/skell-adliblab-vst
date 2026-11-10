@@ -52,12 +52,24 @@ private:
  void parameter(const char*id,float value){
   if(auto*r=dynamic_cast<juce::RangedAudioParameter*>(processor.parameters.getParameter(id))){r->beginChangeGesture();r->setValueNotifyingHost(r->convertTo0to1(value));r->endChangeGesture();}
  }
+ // Restore the actual APVTS defaults, not just a few cosmetic controls.
+ // Keep samples and the chosen visual skin, which belong to project/UI state.
+ void resetFactoryPatch(){
+  for(auto* base:processor.getParameters()){
+   if(auto* parameter=dynamic_cast<juce::RangedAudioParameter*>(base)){
+    parameter->beginChangeGesture();
+    parameter->setValueNotifyingHost(parameter->getDefaultValue());
+    parameter->endChangeGesture();
+   }
+  }
+  processor.setModuleOrder({{0,1,2,3}});
+ }
  void showPresets(){
   juce::PopupMenu menu;menu.addItem(1,"Init Patch");menu.addItem(2,"Wide Adlib Stack");menu.addItem(3,"Robot Incoming");menu.addItem(4,"Ghost Throws");menu.addSeparator();menu.addItem(5,"Save patch file...");menu.addItem(6,"Load patch file...");
   juce::Component::SafePointer<HeaderBar>safe(this);
   menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&preset),[safe](int result){if(!safe)return;
    switch(result){
-    case 1:safe->parameter("chaos",0);safe->parameter("charType",0);safe->parameter("charIntensity",.35f);safe->preset.setButtonText("INIT PATCH");break;
+    case 1:safe->resetFactoryPatch();safe->preset.setButtonText("INIT PATCH");break;
     case 2:safe->parameter("stackVoices",1);safe->parameter("stackSpread",160);safe->parameter("mix",.77f);safe->preset.setButtonText("WIDE ADLIB STACK");break;
     case 3:safe->parameter("charType",1);safe->parameter("charIntensity",.83f);safe->parameter("charCrush",7);safe->preset.setButtonText("ROBOT INCOMING");break;
     case 4:safe->parameter("charType",4);safe->parameter("throwFeedback",.8f);safe->parameter("throwRepeats",8);safe->preset.setButtonText("GHOST THROWS");break;
@@ -76,7 +88,7 @@ private:
  void loadPreset(){
   chooser=std::make_unique<juce::FileChooser>("Load AdlibLab patch",juce::File{},"*.skad");
   juce::Component::SafePointer<HeaderBar>safe(this);
-  chooser->launchAsync(juce::FileBrowserComponent::openMode|juce::FileBrowserComponent::canSelectFiles,[safe](const juce::FileChooser&f){if(!safe)return;auto file=f.getResult();if(!file.existsAsFile()||file.getSize()>10000000)return;juce::MemoryBlock data;if(file.loadFileAsData(data))safe->processor.setStateInformation(data.getData(),(int)data.getSize());});
+  chooser->launchAsync(juce::FileBrowserComponent::openMode|juce::FileBrowserComponent::canSelectFiles,[safe](const juce::FileChooser&f){if(!safe)return;auto file=f.getResult();if(!file.existsAsFile()||file.getSize()>10000000)return;juce::MemoryBlock data;if(file.loadFileAsData(data)){safe->processor.setStateInformation(data.getData(),(int)data.getSize());safe->preset.setButtonText("LOADED PATCH");}});
  }
  void showSettings(){juce::PopupMenu menu;menu.addItem(1,"About Skell AdlibLab");menu.addItem(2,"Low quality mode");menu.addItem(3,"Normal quality mode");menu.addItem(4,"High quality mode");
   juce::Component::SafePointer<HeaderBar>safe(this);

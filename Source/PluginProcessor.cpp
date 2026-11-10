@@ -123,12 +123,12 @@ adlib::Params SkellAdlibLabProcessor::loadParams()const{
 }
 
 std::array<int,4>SkellAdlibLabProcessor::getModuleOrder()const{
- std::array<int,4> result{};for(int i=0;i<4;++i)result[(size_t)i]=moduleOrder[(size_t)i].load();return result;
+ return moduleOrder.load();
 }
 void SkellAdlibLabProcessor::setModuleOrder(std::array<int,4> order){
  std::array<bool,4> seen{{false,false,false,false}};
  for(int id:order){if(!juce::isPositiveAndBelow(id,4)||seen[(size_t)id])return;seen[(size_t)id]=true;}
- for(int i=0;i<4;++i)moduleOrder[(size_t)i].store(order[(size_t)i]);
+ if(!moduleOrder.store(order))return;
  juce::String text;for(int i=0;i<4;++i){if(i)text<<",";text<<order[(size_t)i];}
  parameters.state.setProperty("moduleOrder",text,nullptr);
 }
@@ -285,7 +285,7 @@ void SkellAdlibLabProcessor::getStateInformation(juce::MemoryBlock&dest){
  juce::MemoryOutputStream out;
  out.writeInt(stateMagic);out.writeInt(1);
  auto tree=parameters.copyState();
- juce::String ord;for(int i=0;i<4;++i){if(i)ord<<",";ord<<moduleOrder[(size_t)i].load();}
+ juce::String ord;const auto order=moduleOrder.load();for(int i=0;i<4;++i){if(i)ord<<",";ord<<order[(size_t)i];}
  tree.setProperty("moduleOrder",ord,nullptr);
  for(int i=0;i<8;++i){tree.setProperty("voicePan"+juce::String(i),route.stack.getVoicePan(i),nullptr);tree.setProperty("voicePitch"+juce::String(i),route.stack.getVoicePitch(i),nullptr);}
  tree.writeToStream(out);
@@ -312,7 +312,7 @@ void SkellAdlibLabProcessor::setStateInformation(const void*data,int bytes){
  auto arr=juce::StringArray::fromTokens(tree.getProperty("moduleOrder","0,1,2,3").toString(),",","");
  if(arr.size()==4){std::array<int,4>order{};for(int i=0;i<4;++i)order[(size_t)i]=arr[i].getIntValue();
   std::array<bool,4>seen{};bool valid=true;for(int x:order){if(!juce::isPositiveAndBelow(x,4)||seen[(size_t)x])valid=false;else seen[(size_t)x]=true;}
-  if(valid)for(int i=0;i<4;++i)moduleOrder[(size_t)i].store(order[(size_t)i]);
+  if(valid)moduleOrder.store(order);
  }
  parameters.replaceState(tree);
  for(int i=0;i<8;++i){

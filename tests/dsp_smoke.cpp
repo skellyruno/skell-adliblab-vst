@@ -1,3 +1,5 @@
+#include "../Source/dsp/ModuleOrder.h"
+#include <thread>
 #include "../Source/dsp/ChainRouter.h"
 #include "../Source/dsp/OnsetDetector.h"
 #include "../Source/dsp/PhraseTracker.h"
@@ -6,6 +8,24 @@
 #include <iostream>
 #include <algorithm>
 #include <limits>
+
+static void testAtomicModuleOrder(){
+ adlib::ModuleOrder order;
+ assert((order.load()==std::array<int,4>{{0,1,2,3}}));
+ assert(!order.store({{0,1,1,3}}));
+ assert(!order.store({{0,1,2,4}}));
+ assert((order.load()==std::array<int,4>{{0,1,2,3}}));
+ std::atomic<bool> ok{true};
+ std::thread writer([&]{for(int i=0;i<100000;++i)
+  order.store(i%2?std::array<int,4>{{3,2,1,0}}:std::array<int,4>{{2,0,3,1}});});
+ for(int i=0;i<100000;++i){
+  auto value=order.load();
+  if(value!=std::array<int,4>{{0,1,2,3}} &&
+     value!=std::array<int,4>{{3,2,1,0}} &&
+     value!=std::array<int,4>{{2,0,3,1}})ok.store(false);
+ }
+ writer.join();assert(ok.load());
+}
 
 static void runEngine(double rate) {
  adlib::ChainRouter router;
@@ -148,6 +168,28 @@ static void testThrowTimingAndDuck(){
 }
 
 // Feedback controls subsequent repeats; zero feedback must keep the first echo.
+static void testMeltHotSwap(){
+ for(double sr:{22050.,44100.,48000.,96000.,192000.}){
+  adlib::MeltEngine engine;engine.prepare(sr);
+  adlib::Params p;p.meltOn=true;p.meltMode=1;p.meltAmount=1.f;
+  p.meltFollowPitch=0.f;p.meltFollowLoudness=0.f;
+  adlib::ClipBank::Clip first,second;
+  first.mono.assign(4410,.85f);
+  second.mono.assign(4410,-.85f);
+  float prev=0,peakStep=0,peak=0;
+  const int n=(int)(sr*.10);
+  for(int i=0;i<n;++i){
+   const auto*clip=i<n/2?&first:&second;
+   const auto out=engine.tick({0,0},p,clip,0,1.f);
+   assert(std::isfinite(out.l)&&std::isfinite(out.r));
+   if(i>n/2-8 && i<n/2+(int)(sr*.04))
+    peakStep=std::max(peakStep,std::abs(out.l-prev));
+   peak=std::max(peak,std::abs(out.l));prev=out.l;
+  }
+  assert(peak>.3f && peakStep<.055f);
+ }
+}
+
 static void testThrowZeroFeedback(){
  adlib::ThrowEngine engine; adlib::Params p;
  engine.prepare(48000); p.throwMode=2; p.throwDiv=2;
@@ -267,6 +309,8 @@ static void testCharacterBypassClick(){
 }
 
 int main(){
+ testAtomicModuleOrder();
+ testMeltHotSwap();
  testInvalidBpmThrow();
  for(double sampleRate:{22050.,44100.,48000.,96000.,192000.})runEngine(sampleRate);
  testThrowTimingAndDuck();

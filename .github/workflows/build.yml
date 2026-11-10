@@ -21,7 +21,7 @@ jobs:
         run: python tests/ui_layout.py
       - name: Run DSP regression smoke under ASan/UBSan
         run: |
-          g++ -std=c++17 -O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined -Itests/stubs tests/dsp_smoke.cpp -o dsp-smoke
+          g++ -std=c++17 -O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined -pthread -Itests/stubs tests/dsp_smoke.cpp -o dsp-smoke
           ./dsp-smoke
       - name: Check silent-tail denormals without host FTZ
         run: |

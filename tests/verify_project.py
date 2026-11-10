@@ -30,4 +30,8 @@ assert 'AffineTransform::identity' not in (root/'Source/PluginEditor.cpp').read_
 assert 'actions/checkout@v5' in workflow and 'actions/upload-artifact@v6' in workflow
 assert 'Compress-Archive' not in workflow, 'Nested ZIP artifact would require two extractions'
 assert 'path: artifact/' in workflow
+assert (root/'Source/dsp/ModuleOrder.h').exists()
+assert 'adlib::ModuleOrder moduleOrder;' in header
+assert 'resetFactoryPatch()' in (root/'Source/ui/HeaderBar.h').read_text()
+assert 'fileDragMove' in (root/'Source/ui/ClipBankView.h').read_text()
 print(f"Project static checks PASS: {len(ids)} parameters, {len(ui_ids)} UI bindings")

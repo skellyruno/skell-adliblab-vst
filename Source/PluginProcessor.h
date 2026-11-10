@@ -6,6 +6,7 @@
 #include "dsp/OnsetDetector.h"
 #include "dsp/PhraseTracker.h"
 #include "dsp/ChaosEngine.h"
+#include "dsp/ModuleOrder.h"
 
 class SkellAdlibLabProcessor final : public juce::AudioProcessor {
 public:
@@ -64,7 +65,7 @@ private:
  juce::AudioFormatManager formats;
  std::atomic<const adlib::ClipBank::Clip*>meltSample{nullptr};
  std::vector<std::unique_ptr<adlib::ClipBank::Clip>>retainedMelt;
- std::array<std::atomic<int>,4>moduleOrder{{0,1,2,3}};
+ adlib::ModuleOrder moduleOrder;
  std::atomic<bool>reRollRequested{false},throwRequested{false};
  std::atomic<int>auditionPadRequested{-1},recordPadRequested{-1},recordReadyPad{-1};
  // One message-thread producer, one audio-thread consumer. Preserves note-off /

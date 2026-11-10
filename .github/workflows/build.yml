@@ -53,7 +53,7 @@ jobs:
           if (-not (Test-Path 'artifact/Skell AdlibLab.vst3/Contents/x86_64-win/Skell AdlibLab.vst3')) {
             throw 'x64 VST3 module missing from staged artifact'
           }
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: Skell-AdlibLab-Windows-VST3
           path: artifact/

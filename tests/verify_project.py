@@ -27,7 +27,7 @@ assert 'createLayout()' in header
 assert 'MidiBuffer::Iterator' not in source, 'Deprecated JUCE MIDI iterator reintroduced'
 assert 'midi.cbegin()' in source and 'midiIterator' in source
 assert 'AffineTransform::identity' not in (root/'Source/PluginEditor.cpp').read_text()
-assert 'actions/checkout@v5' in workflow and 'actions/upload-artifact@v5' in workflow
+assert 'actions/checkout@v5' in workflow and 'actions/upload-artifact@v6' in workflow
 assert 'Compress-Archive' not in workflow, 'Nested ZIP artifact would require two extractions'
 assert 'path: artifact/' in workflow
 print(f"Project static checks PASS: {len(ids)} parameters, {len(ui_ids)} UI bindings")

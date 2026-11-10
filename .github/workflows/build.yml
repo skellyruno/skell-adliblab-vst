@@ -17,10 +17,16 @@ jobs:
         run: python tools/unpack_source.py
       - name: Check project parameters and CMake contract
         run: python tests/verify_project.py
+      - name: Check responsive UI geometry contract
+        run: python tests/ui_layout.py
       - name: Run DSP regression smoke under ASan/UBSan
         run: |
           g++ -std=c++17 -O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined -Itests/stubs tests/dsp_smoke.cpp -o dsp-smoke
           ./dsp-smoke
+      - name: Check real-time allocations and profile worst-case DSP CPU
+        run: |
+          g++ -std=c++17 -O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined -Itests/stubs tests/realtime_alloc.cpp -o realtime-alloc
+          ./realtime-alloc
 
   build-windows:
     runs-on: windows-latest

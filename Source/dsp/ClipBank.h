@@ -25,10 +25,15 @@ public:
   if(target<0)target=nextVoice;
   nextVoice=(target+1)%(int)active.size();
   const float noteRatio=std::pow(2.f,(midi-p.kbRoot)/12.f);
+  // Keep the previous voice's exact most recent output at the handover.
+  // A 4ms linear residual avoids a hard jump when all voices are occupied.
+  const float carry=active[(size_t)target].clip?active[(size_t)target].lastOutput:0.f;
   active[(size_t)target]={clip,0,noteRatio*44100.f/(float)sampleRate,p.kbVelIntensity?clamp(velocity,0,1):1.f,p.kbAltReverse&&(midi%2!=0),midi,0,false,
-   (float)(1.0/(sampleRate*(p.kbVelTail?(0.012+0.11*clamp(velocity,0,1)):0.045)))};
+   (float)(1.0/(sampleRate*(p.kbVelTail?(0.012+0.11*clamp(velocity,0,1)):0.045))),carry,carry,
+   carry!=0.f?juce::jmax(1,(int)(sampleRate*.004)):0};
  }
  void noteOff(int midi){for(auto& a:active)if(a.clip!=nullptr&&a.midi==midi)a.releasing=true;}
+ void releaseAll(){for(auto& a:active)if(a.clip!=nullptr)a.releasing=true;}
  Stereo tick() {
   float sum=0;
   const float attackStep=(float)(1.0/(sampleRate*.002));
@@ -47,14 +52,23 @@ public:
    a.fade=clamp(a.fade+(a.releasing?-a.releaseStep:attackStep),0,1);
    const float remaining=(float)length-1.f-a.position;
    const float tail=clamp(remaining/(float)(sampleRate*.004*a.ratio),0,1);
-   sum+=sample*a.velocity*a.fade*tail*.55f;
+   const float signal=sample*a.velocity*a.fade*tail*.55f;
+   float residual=0.f;
+   if(a.carrySamples>0){
+    residual=a.carry*(float)a.carrySamples/(float)juce::jmax(1,(int)(sampleRate*.004));
+    if(--a.carrySamples==0)a.carry=0;
+   }
+   a.lastOutput=signal+residual;
+   sum+=a.lastOutput;
    a.position+=a.ratio;
    if(a.releasing&&a.fade<=0)a.clip=nullptr;
   }
   return {sum,sum};
  }
 private:
- struct Active {const Clip* clip=nullptr;float position=0,ratio=1,velocity=0;bool reverse=false;int midi=-1;float fade=0;bool releasing=false;float releaseStep=.01f;};
+ struct Active {const Clip* clip=nullptr;float position=0,ratio=1,velocity=0;bool reverse=false;int midi=-1;
+  float fade=0;bool releasing=false;float releaseStep=.01f;
+  float carry=0,lastOutput=0;int carrySamples=0;};
  std::array<std::atomic<const Clip*>,8>pads;
  std::vector<std::unique_ptr<Clip>>owned;
  std::array<Active,16>active{};double sampleRate=44100;int nextVoice=0;

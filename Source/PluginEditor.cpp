@@ -10,6 +10,7 @@ SkellAdlibLabEditor::Canvas::Canvas(SkellAdlibLabProcessor&p,SkellAdlibLabEditor
  setSize(Theme::designWidth,Theme::designHeight);
  addAndMakeVisible(header);header.setBounds(15,8,1250,65);
  header.onThemeCycle=[this]{int next=(themeIndex+1)%4;processor.setThemeIndex(next);applyTheme(next);};
+ header.onThemeSelect=[this](int next){processor.setThemeIndex(next);applyTheme(next);};
  for(auto* module:modules){addAndMakeVisible(module);module->requestReorder=[this](int id,int displacement){reorder(id,displacement);};}
  layoutModules();
  addAndMakeVisible(chaos);chaos.setBounds(27,567,233,214);
@@ -57,7 +58,7 @@ void SkellAdlibLabEditor::Canvas::paint(juce::Graphics&g){
  g.setColour(palette.text);g.setFont(Theme::display(15));
  g.drawText("PERFORM / RECORD",286,558,245,27,juce::Justification::left);
  g.setColour(palette.muted);g.setFont(Theme::mono(11));
- g.drawText("CLICK: PLAY   |   SHIFT+CLICK: CAPTURE   |   DRAG WAV TO PAD",484,558,511,27,juce::Justification::right);
+ g.drawText("CLICK PLAY  /  SHIFT+CLICK RECORD  /  DROP AUDIO",493,558,501,27,juce::Justification::right);
  g.setColour(palette.surface);g.fillRoundedRectangle(juce::Rectangle<float>(1012,569,233,207),10);
  g.setColour(palette.border);g.drawRoundedRectangle(juce::Rectangle<float>(1012,569,233,207),10,1);
  g.setColour(palette.text);g.setFont(Theme::display(15));g.drawText("OUTPUT",1030,577,188,23,juce::Justification::left);
@@ -68,7 +69,7 @@ void SkellAdlibLabEditor::Canvas::paint(juce::Graphics&g){
  g.setColour(palette.raised);g.fillRoundedRectangle(juce::Rectangle<float>(1089,749,132,8),3);
  g.setColour(palette.melt);g.fillRoundedRectangle(juce::Rectangle<float>(1090,750,130*juce::jlimit(0.f,1.f,processor.getOutputLevel()),6),2);
  g.setColour(palette.muted);g.setFont(Theme::mono(9));g.drawText("SKELL AUDIO    /    ADLIBLAB 0.3",28,785,290,12,juce::Justification::left);
- g.drawText("SKULL = SWITCH THEME",1049,785,195,12,juce::Justification::right);
+ g.drawText("SKULL: CLICK TO CYCLE / RIGHT-CLICK TO CHOOSE",930,785,317,12,juce::Justification::right);
 }
 void SkellAdlibLabEditor::Canvas::layoutModules(){
  auto order=processor.getModuleOrder();constexpr int positions[]={30,342,654,966};

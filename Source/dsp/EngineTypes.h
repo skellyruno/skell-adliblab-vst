@@ -12,6 +12,17 @@ constexpr int kPadCount = 8;
 constexpr int kMaxStackVoices = 8;
 constexpr float pi = juce::MathConstants<float>::pi;
 inline float clamp (float x, float lo, float hi) { return juce::jlimit(lo, hi, x); }
+// Protect recursive DSP from malformed floating-point host and file input.
+inline float sanitizeSample(float x) noexcept {
+ return std::isfinite(x)?clamp(x,-8.f,8.f):0.f;
+}
+// Transparent at usual levels; asymptotes to ±1 above 0.85. Not true peak.
+inline float softLimitSample(float x) noexcept {
+ x=sanitizeSample(x);
+ const float mag=std::abs(x);
+ if(mag<=.85f)return x;
+ return std::copysign(.85f+.15f*(1.f-std::exp(-(mag-.85f)/.15f)),x);
+}
 inline float equalPowerPanL (float pan) { return std::cos((pan + 1.0f) * pi * 0.25f); }
 inline float equalPowerPanR (float pan) { return std::sin((pan + 1.0f) * pi * 0.25f); }
 struct Stereo { float l = 0, r = 0; Stereo& operator+= (Stereo b) { l+=b.l; r+=b.r; return *this; } };

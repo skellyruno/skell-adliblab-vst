@@ -9,6 +9,7 @@ public:
  :processor(p),palette(pal),skull(pal),mixAtt(p.parameters,"mix",mix),outputAtt(p.parameters,"outputGain",output){
   addAndMakeVisible(skull);skull.setBounds(11,9,48,48);
   skull.onClick=[this]{if(onThemeCycle)onThemeCycle();};
+  skull.onThemeChosen=[this](int theme){if(onThemeSelect)onThemeSelect(theme);};
   setup(mix,palette.stack);setup(output,palette.melt);
   addAndMakeVisible(mix);mix.setBounds(906,6,64,55);
   addAndMakeVisible(output);output.setBounds(980,6,64,55);
@@ -17,6 +18,7 @@ public:
   settings.setButtonText("MENU");settings.setBounds(1177,18,62,34);settings.onClick=[this]{showSettings();};addAndMakeVisible(settings);
  }
  std::function<void()> onThemeCycle;
+ std::function<void(int)> onThemeSelect;
  void refreshTheme(){setup(mix,palette.stack);setup(output,palette.melt);skull.repaint();repaint();}
  void paint(juce::Graphics&g)override{
   g.setColour(palette.surface);g.fillRoundedRectangle(getLocalBounds().toFloat(),10.f);
@@ -65,7 +67,7 @@ private:
  }
  void showSettings(){juce::PopupMenu menu;menu.addItem(1,"About Skell AdlibLab");menu.addItem(2,"Low quality mode");menu.addItem(3,"Normal quality mode");menu.addItem(4,"High quality mode");
   juce::Component::SafePointer<HeaderBar>safe(this);
-  menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&settings),[safe](int result){if(!safe)return;if(result==1)juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::InfoIcon,"Skell AdlibLab","Windows VST3 • experimental audio engine");else if(result>=2&&result<=4)safe->parameter("latencyMode",(float)(result-2));});
+  menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&settings),[safe](int result){if(!safe)return;if(result==1)juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::InfoIcon,"Skell AdlibLab","Windows VST3 - experimental audio engine");else if(result>=2&&result<=4)safe->parameter("latencyMode",(float)(result-2));});
  }
  SkellAdlibLabProcessor&processor;const Theme::Palette&palette;SkullThemeButton skull;juce::Slider mix,output;
  juce::AudioProcessorValueTreeState::SliderAttachment mixAtt,outputAtt;

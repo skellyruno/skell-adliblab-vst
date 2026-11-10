@@ -177,6 +177,72 @@ static void testSeparatePhraseEvents(){
  assert(words==1);
 }
 
+
+static void testSafetyLimiterAndCorruptInput(){
+ for(float x:{-.85f,-.2f,0.f,.2f,.85f})
+  assert(std::abs(adlib::softLimitSample(x)-x)<1.e-6f);
+ float previous=adlib::softLimitSample(0.f);
+ for(int i=1;i<=20000;++i){
+  const float x=(float)i/100.f;
+  const float y=adlib::softLimitSample(x);
+  assert(std::isfinite(y)&&y>=previous&&y<=1.f);
+  previous=y;
+ }
+ assert(adlib::sanitizeSample(std::numeric_limits<float>::infinity())==0.f);
+ assert(adlib::sanitizeSample(std::numeric_limits<float>::quiet_NaN())==0.f);
+ assert(adlib::softLimitSample(-100.f)>=-1.f);
+}
+
+// A MIDI voice stolen under heavy polyphony must retain the previous sample
+// and fade its tail, not abruptly snap to silence before the new attack.
+static void testClipVoiceStealClick(){
+ adlib::ClipBank bank;bank.prepare(48000);
+ adlib::Params p;
+ auto clip=std::make_unique<adlib::ClipBank::Clip>();
+ clip->mono.assign(48000,.6f);
+ bank.publish(0,std::move(clip));
+ for(int i=0;i<16;++i)bank.noteOn(60,1.f,p);
+ float previous=0;
+ for(int i=0;i<1500;++i)previous=bank.tick().l;
+ bank.noteOn(60,1.f,p); // forced steal of a loud, sustained slot
+ const float next=bank.tick().l;
+ assert(std::abs(next-previous)<.04f);
+ for(int i=0;i<2000;++i)assert(std::isfinite(bank.tick().l));
+ bank.releaseAll();
+ for(int i=0;i<10000;++i)assert(std::isfinite(bank.tick().l));
+}
+
+// Envelope time constants should represent the same time in milliseconds
+// irrespective of whether the host chooses 22.05, 48 or 192 kHz.
+static void testOnsetTimeConstants(){
+ float reference=-1.f;
+ for(double sr:{22050.,44100.,48000.,96000.,192000.}){
+  adlib::OnsetDetector onset;onset.prepare(sr);
+  float level=0;
+  for(int i=0;i<(int)(sr*.002);++i)level=onset.tick(.2f).envelope;
+  if(reference<0)reference=level;
+  else assert(std::abs(level-reference)<.006f);
+ }
+}
+
+static void testCharacterBypassClick(){
+ adlib::CharacterEngine effect;adlib::ChaosEngine chaos;adlib::Params p;
+ effect.prepare(48000.);
+ p.charType=1;p.charIntensity=1.f;p.charGlide=0;
+ p.charOn=false;
+ for(int i=0;i<300;++i)assert(std::abs(effect.tick({.12f,.12f},p,chaos).l-.12f)<.0001f);
+ p.charOn=true;
+ const auto initial=effect.tick({.12f,.12f},p,chaos);
+ assert(std::abs(initial.l-.12f)<.008f);
+ for(int i=0;i<3000;++i)effect.tick({.12f,.12f},p,chaos);
+ const auto before=effect.tick({.12f,.12f},p,chaos);
+ p.charOn=false;
+ const auto after=effect.tick({.12f,.12f},p,chaos);
+ assert(std::abs(after.l-before.l)<.012f);
+ for(int i=0;i<5000;++i)effect.tick({.12f,.12f},p,chaos);
+ assert(std::abs(effect.tick({.12f,.12f},p,chaos).l-.12f)<.001f);
+}
+
 int main(){
  for(double sampleRate:{22050.,44100.,48000.,96000.,192000.})runEngine(sampleRate);
  testThrowTimingAndDuck();
@@ -186,6 +252,10 @@ int main(){
  adlib::Vocoder voc;voc.prepare(44100);
  for(int i=0;i<1000;++i)assert(std::isfinite(voc.tick(.3f,.1f,.3f)));
  testClipBank();
+ testClipVoiceStealClick();
+ testOnsetTimeConstants();
+ testCharacterBypassClick();
+ testSafetyLimiterAndCorruptInput();
  testPitchAccuracy();
  std::cout << "DSP smoke PASS: 5 sample rates, reorder, throw, YIN pitch/noise, MIDI clips\n";
 }

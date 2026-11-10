@@ -129,8 +129,19 @@ void SkellAdlibLabProcessor::processBlock(juce::AudioBuffer<float>&buffer,juce::
  if(reRollRequested.exchange(false))chaos.reRoll(p.chaosLock);
  if(throwRequested.exchange(false))route.throwEngine.trigger(p);
  if(int pad=auditionPadRequested.exchange(-1);juce::isPositiveAndBelow(pad,8))clips.noteOn(p.kbRoot+pad,1,p);
- if(int note=midiNoteRequested.exchange(-1);juce::isPositiveAndBelow(note,128)){clips.noteOn(note,1,p);activeMidiNote.store(note);}
- if(int note=midiOffRequested.exchange(-1);juce::isPositiveAndBelow(note,128)){clips.noteOff(note);activeMidiNote.store(-1);}
+ // Drain all UI events in order: a fast glissando must not lose note-offs.
+ if(uiMidiOverflow.exchange(false,std::memory_order_acq_rel)) {
+  clips.releaseAll();activeMidiNote.store(-1);
+ }
+ auto readIndex=uiMidiRead.load(std::memory_order_relaxed);
+ const auto writeIndex=uiMidiWrite.load(std::memory_order_acquire);
+ while(readIndex!=writeIndex){
+  const auto event=uiMidiEvents[readIndex%uiMidiEvents.size()];
+  if(event.on){clips.noteOn(event.note,1.f,p);activeMidiNote.store(event.note);}
+  else {clips.noteOff(event.note);if(activeMidiNote.load()==event.note)activeMidiNote.store(-1);}
+  ++readIndex;
+ }
+ uiMidiRead.store(readIndex,std::memory_order_release);
  if(int pad=recordPadRequested.exchange(-1);juce::isPositiveAndBelow(pad,8)&&recordReadyPad.load()<0){recordActive=pad;recordCount=recordSilent=0;recordStarted=false;}
  for(int i=0;i<n;++i){
   while(hasMidi&&midiPosition<=i){
@@ -144,7 +155,8 @@ void SkellAdlibLabProcessor::processBlock(juce::AudioBuffer<float>&buffer,juce::
    }
    hasMidi=it.getNextEvent(message,midiPosition);
   }
-  adlib::Stereo dry{left[i],right?right[i]:left[i]};
+  // Stop corrupted host samples from poisoning all recursive detectors.
+  adlib::Stereo dry{adlib::sanitizeSample(left[i]),adlib::sanitizeSample(right?right[i]:left[i])};
   float mono=(dry.l+dry.r)*.5f;
   inMeter=juce::jmax(inMeter,std::abs(mono));
   pitchTracker.tick(mono);
@@ -172,8 +184,16 @@ void SkellAdlibLabProcessor::processBlock(juce::AudioBuffer<float>&buffer,juce::
   float middle=(output.l+output.r)*.5f,side=(output.l-output.r)*.5f*p.width;
   float gain=gainSmooth.getNextValue();
   output.l=(middle+side)*gain;output.r=(middle-side)*gain;
-  // Non-lookahead safety soft clip; this is not a true peak limiter.
-  if(p.safetyLimiter){output.l=std::tanh(output.l);output.r=std::tanh(output.r);}
+  // Unity gain for normal signals, smooth 0.85 -> 1.0 ceiling above
+  // threshold. This is a *sample* safety clip, not a true-peak limiter.
+  if(p.safetyLimiter){
+   output.l=adlib::softLimitSample(output.l);
+   output.r=adlib::softLimitSample(output.r);
+  }
+  // Zero signals below -400 dBFS, far below audibility, before returning
+  // them to the host. ScopedNoDenormals guards internal recursive DSP.
+  if(!std::isfinite(output.l)||std::abs(output.l)<1.e-20f)output.l=0.f;
+  if(!std::isfinite(output.r)||std::abs(output.r)<1.e-20f)output.r=0.f;
   left[i]=output.l;if(right)right[i]=output.r;
   outMeter=juce::jmax(outMeter,juce::jmax(std::abs(output.l),std::abs(output.r)));
  }
@@ -227,7 +247,8 @@ void SkellAdlibLabProcessor::loadWav(const juce::File&file,int padOrMelt){
   float f=(float)(src-n);
   float a=temp.getSample(0,n),b=temp.getSample(0,n+1);
   if(temp.getNumChannels()>1){a=(a+temp.getSample(1,n))*.5f;b=(b+temp.getSample(1,n+1))*.5f;}
-  sample->mono[(size_t)i]=juce::jmap(f,a,b);
+  const float x=juce::jmap(f,a,b);
+  sample->mono[(size_t)i]=adlib::sanitizeSample(x);
  }
  if(padOrMelt<0){publishMelt(std::move(sample));parameters.state.setProperty("meltSamplePath",file.getFullPathName(),nullptr);}
  else if(padOrMelt<8)clips.publish(padOrMelt,std::move(sample));
@@ -281,6 +302,7 @@ void SkellAdlibLabProcessor::setStateInformation(const void*data,int bytes){
   clip->mono.resize((size_t)count);
   const int byteCount=count*(int)sizeof(float);
   if(in.read(clip->mono.data(),byteCount)!=byteCount)break;
+  for(auto& x:clip->mono)x=adlib::sanitizeSample(x);
   if(i<8)clips.publish(i,std::move(clip));else publishMelt(std::move(clip));
  }
 }

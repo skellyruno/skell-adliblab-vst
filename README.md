@@ -4,7 +4,7 @@
 
 **Skell AdlibLab** — an experimental Windows VST3 adlib designer for JUCE 8 / CMake. Derived from the supplied `skell-vst-template-main(1).zip` starter. The GitHub repository also contains an existing SkellCore foundation; the AdlibLab CMake target preserves and links the reusable SkellCore DSP/UI targets without replacing that shared library.
 
-> **Development status: v0.4 (experimental).** DSP regression checks pass locally and the Windows VST3 builds via GitHub Actions. This is not yet FL Studio host-validated or production certified. Advanced formant preservation and spectral-envelope morphing remain unimplemented.
+> **Development status: v0.5 (experimental).** DSP regression checks pass locally and the Windows VST3 builds via GitHub Actions. This is not yet FL Studio host-validated or production certified. Advanced formant preservation and spectral-envelope morphing remain unimplemented.
 
 ## Interface & features implemented
 
@@ -31,7 +31,8 @@ cmake --build build --config Release --parallel 2
 ```
 
 VST3 output: `build/SkellAdlibLab_artefacts/Release/VST3/Skell AdlibLab.vst3`
-Copy the extracted `.vst3` directory to `C:\Program Files\Common Files\VST3\` and rescan plugins in FL Studio.
+
+Copy the extracted `.vst3` directory to `C:\Program Files\Common Files\VST3\` and rescan plugins inside FL Studio.
 
 For a private/local JUCE clone:
 
@@ -39,7 +40,7 @@ For a private/local JUCE clone:
 cmake -S . -B build -DJUCE_PATH=/absolute/path/to/JUCE
 ```
 
-GitHub Actions runs portable sanitizer-backed DSP tests on Linux, then compiles and publishes the **Windows VST3 artifact only**. There are no macOS builds or Standalone targets.
+GitHub Actions runs a portable sanitizer-backed DSP regression test on Linux, then compiles and publishes the **Windows VST3 artifact only**. Linux is used for testing, not plugin output. There are no macOS builds or Standalone targets.
 
 ## MIDI
 
@@ -69,7 +70,7 @@ g++ -std=c++17 -O2 -Wall -Wextra -Itests/stubs tests/dsp_smoke.cpp -o dsp_smoke
 ./dsp_smoke
 ```
 
-**The test shim is not JUCE and cannot validate plugin compilation or host behaviour.** Actual compilation runs via Windows GitHub Actions; audition and load/close testing in FL Studio remain outstanding.
+**The test shim is not JUCE and cannot validate plugin compilation or host behaviour.** Actual compilation is performed by the Windows GitHub Actions job; audition and load/close tests inside FL Studio remain outstanding.
 
 ## Remaining gaps and priorities
 
@@ -90,3 +91,13 @@ Latest v0.4 improvements: live THROW activity visualization, MELT waveform previ
 See [v0.4 changelog](docs/CHANGELOG-v0.4.md).
 
 The graphic palette uses the requested colors. UI fonts fall back to system sans-serif and monospace for this revision; fonts have not been bundled.
+
+### v0.5 hardening notes (November 2026)
+- Windows x64 VST3 only; the CI DSP safety job runs on Linux but does not distribute Linux plugins.
+- UI skull: left-click cycles the four palettes; right-click opens a named theme picker. Interface preserves its 1280×800 aspect ratio at 800–1920 pixels.
+- CHARACTER enable/bypass now crossfades instead of hard switching, and expensive filter coefficients update on changes, not every sample. Onset filters preserve millisecond-scale behavior across sample rates.
+- MIDI keyboard gestures use a bounded lock-free event queue to preserve note-off/note-on ordering on glissandos; stolen clip voices carry a 4ms release tail.
+- Input/sample validation suppresses non-finite values, output subnormals are zeroed, and captured/imported audio is bounded to ±8 before processing.
+- Regression tests include five host rates, sound continuity, allocation checks, and non-gating CPU timing.
+
+**Not production-certified:** Independent formant preservation and spectral morphing remain prototype algorithms. A JUCE build proves compilation, not plugin stability or actual CPU usage inside FL Studio. The safety soft clip is not a true-peak limiter, and dry latency remains intentionally zero while effects have their own artistic delays.

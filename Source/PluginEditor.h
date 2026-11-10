@@ -51,5 +51,6 @@ private:
  void timerCallback()override;
  SkellAdlibLabProcessor&processor;
  LabLookAndFeel lookAndFeel;
+ juce::TooltipWindow tooltips{this,700};
  JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SkellAdlibLabEditor)
 };

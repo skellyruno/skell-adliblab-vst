@@ -4,7 +4,18 @@
 // Original vector-only Skell skull. No bitmap, emoji or unavailable icon font.
 class SkullThemeButton final : public juce::Button {
 public:
- explicit SkullThemeButton(const Theme::Palette& p):juce::Button("Change visual theme"),palette(p){setTooltip("Change theme: Cosmic / Neon / Ivory / Crimson");}
+ explicit SkullThemeButton(const Theme::Palette& p):juce::Button("Change visual theme"),palette(p){setTooltip("Left click: next theme. Right click: select Cosmic, Neon, Ivory or Crimson.");}
+ std::function<void(int)>onThemeChosen;
+ void mouseDown(const juce::MouseEvent&event)override{
+  if(!event.mods.isPopupMenu()){juce::Button::mouseDown(event);return;}
+  juce::PopupMenu menu;
+  menu.addItem(1,"Cosmic");menu.addItem(2,"Neon");
+  menu.addItem(3,"Ivory");menu.addItem(4,"Crimson");
+  juce::Component::SafePointer<SkullThemeButton>safe(this);
+  menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(this),[safe](int result){
+   if(safe&&result>=1&&result<=4&&safe->onThemeChosen)safe->onThemeChosen(result-1);
+  });
+ }
  void paintButton(juce::Graphics&g,bool hover,bool pressed)override{
   auto r=getLocalBounds().toFloat().reduced(2);
   auto a=palette.melt;

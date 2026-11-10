@@ -36,8 +36,8 @@ public:
  void loadWav(const juce::File&,int padOrMelt);
  void clearPad(int pad){clips.clear(pad);}
  void triggerPad(int pad){auditionPadRequested.store(pad);}
- void requestMidiOn(int note){midiNoteRequested.store(note);}
- void requestMidiOff(int note){midiOffRequested.store(note);}
+ void requestMidiOn(int note){enqueueUiMidi(note,true);}
+ void requestMidiOff(int note){enqueueUiMidi(note,false);}
  void armRecording(int pad){if(juce::isPositiveAndBelow(pad,8))recordPadRequested.store(pad);}
  bool collectRecordedClip();
  int getThemeIndex()const{return juce::jlimit(0,3,(int)parameters.state.getProperty("themeIndex",0));}
@@ -66,7 +66,22 @@ private:
  std::vector<std::unique_ptr<adlib::ClipBank::Clip>>retainedMelt;
  std::array<std::atomic<int>,4>moduleOrder{{0,1,2,3}};
  std::atomic<bool>reRollRequested{false},throwRequested{false};
- std::atomic<int>auditionPadRequested{-1},midiNoteRequested{-1},midiOffRequested{-1},recordPadRequested{-1},recordReadyPad{-1};
+ std::atomic<int>auditionPadRequested{-1},recordPadRequested{-1},recordReadyPad{-1};
+ // One message-thread producer, one audio-thread consumer. Preserves note-off /
+ // note-on ordering when dragging the keyboard within a single host block.
+ struct UiMidiEvent { int note=0; bool on=false; };
+ std::array<UiMidiEvent,64>uiMidiEvents{};
+ std::atomic<unsigned>uiMidiRead{0},uiMidiWrite{0};
+ std::atomic<bool>uiMidiOverflow{false};
+ void enqueueUiMidi(int note,bool on) noexcept {
+  if(!juce::isPositiveAndBelow(note,128))return;
+  const auto write=uiMidiWrite.load(std::memory_order_relaxed);
+  if(write-uiMidiRead.load(std::memory_order_acquire)>=uiMidiEvents.size()) {
+   uiMidiOverflow.store(true,std::memory_order_release);return;
+  }
+  uiMidiEvents[write%uiMidiEvents.size()]={note,on};
+  uiMidiWrite.store(write+1,std::memory_order_release);
+ }
  std::atomic<int>recordReadyCount{0};
  std::array<std::vector<float>,8>captureBuffers;
  int recordActive=-1,recordCount=0,recordSilent=0;bool recordStarted=false;

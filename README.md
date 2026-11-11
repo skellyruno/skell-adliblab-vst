@@ -145,3 +145,19 @@ SkellCore's Windows same-session shared-memory bus holds only the freshest
 valid tuning packet and expires crashed senders after five seconds. Existing
 VST3/parameter IDs, styles and sound-processing code are preserved.
 
+
+
+## v0.9.3 SkellCore integration and UI metering
+
+The released VST3, guided tour, optional SkellWorld connection, and headless JUCE
+UI renderer now use **one immutable pinned SkellCore commit**
+(`b0c79ff75cf7f1ca7e55ad231a9a9013f7c9e6c3`) from
+[skellcore-vst-template](https://github.com/skellyruno/skellcore-vst-template).
+The legacy bundled `SkellCore/` folder is retained for provenance but is **not
+included in the build**. This avoids loading two mismatched copies of its headers.
+
+SkellCore `TempoClock` now handles host BPM validation; invalid BPM retains the
+last known valid value, with a 120 BPM default. Tempo advances once per block.
+Both visible level meters use the same allocation-free, sample-rate-independent
+peak envelope, with an approximately 180ms release instead of instant block peaks.
+No automatable parameter ID, VST3 identity, plugin latency, or preset format changed.

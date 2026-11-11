@@ -16,7 +16,16 @@ for part in 'StackPanel CharacterPanel ThrowPanel MeltPanel ClipBankView MiniKey
  assert (root/'Source/ui'/f'{part}.h').exists(),part
 for part in 'ChainRouter OnsetDetector PhraseTracker PitchTracker PitchFormantEngine StackEngine CharacterEngine ThrowEngine MeltEngine Vocoder ClipBank ChaosEngine'.split():
  assert (root/'Source/dsp'/f'{part}.h').exists(),part
-assert re.search(r'\bFORMATS\s+VST3\s*\n', (root/'CMakeLists.txt').read_text()), 'Expected VST3 only'
+cmake=(root/'CMakeLists.txt').read_text()
+assert re.search(r'\bFORMATS\s+VST3\s*\n', cmake), 'Expected Windows VST3 only'
+assert 'SkellCoreDependency' in cmake and 'SkellCore::UIRenderer' in cmake
+assert 'SkellCore::DSP SkellCore::UI' in cmake, 'SkellCore missing from release'
+assert 'skellcore-vst-template.git' in cmake, 'Wrong SkellCore repo'
+assert 'b0c79ff75cf7f1ca7e55ad231a9a9013f7c9e6c3' in cmake
+assert 'SkellGuidedTourHeaders' not in cmake, 'Duplicate SkellCore checkout'
+assert 'add_subdirectory(SkellCore)' not in cmake, 'Stale bundled core must not build'
+assert 'HostTempoClock.h' in header and 'updateTempoFromPlayhead' in source
+assert (root/'Source/dsp/PeakMeter.h').exists()
 workflow=(root/'.github/workflows/build.yml').read_text()
 assert 'build-windows:' in workflow
 assert 'build-macos:' not in workflow and 'macos-latest' not in workflow

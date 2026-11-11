@@ -1,6 +1,8 @@
 #pragma once
 #include <JuceHeader.h>
 #include <SkellCore/WorldLink.h>
+#include <SkellCore/HostTempoClock.h>
+#include "dsp/PeakMeter.h"
 #include "dsp/ChainRouter.h"
 #include "dsp/ClipBank.h"
 #include "dsp/PitchTracker.h"
@@ -65,6 +67,8 @@ private:
  skellcore::world::WorldLink skellKeyLink_{"skell.adliblab","Skell AdlibLab"};
  std::uint64_t lastSkellKeyPacket_=0;
  std::atomic<float> receivedA4_{440.f};
+ skellcore::TempoClock hostTempoClock;
+ adlib::PeakMeter inputPeak,outputPeak;
  adlib::ChainRouter route;
  adlib::ChaosEngine chaos;
  adlib::PitchTracker pitchTracker;

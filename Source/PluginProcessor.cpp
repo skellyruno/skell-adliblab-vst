@@ -130,6 +130,8 @@ bool SkellAdlibLabProcessor::isBusesLayoutSupported(const BusesLayout& l) const 
 
 void SkellAdlibLabProcessor::prepareToPlay(double sr,int){
  sampleRate=sr;
+ hostTempoClock.prepare(sr);
+ inputPeak.prepare(sr);outputPeak.prepare(sr);
  onset.prepare(sr);phrase.prepare(sr);pitchTracker.prepare(sr);route.prepare(sr);clips.prepare(sr);
  for(auto&v:captureBuffers)v.assign((size_t)juce::jmax(2,(int)(sr*5.0)),0.0f);
  recordActive=-1;recordCount=recordSilent=0;recordStarted=false;recordReadyPad.store(-1);
@@ -170,7 +172,12 @@ void SkellAdlibLabProcessor::processBlock(juce::AudioBuffer<float>&buffer,juce::
  const int n=buffer.getNumSamples(),channels=buffer.getNumChannels();
  if(channels==0||n==0)return;
  auto p=loadParams();
- if(auto*hostPlayHead=getPlayHead()) if(auto pos=hostPlayHead->getPosition()) if(auto bpm=pos->getBpm())if(std::isfinite(*bpm)&&*bpm>=20.0&&*bpm<=400.0)p.bpm=(float)*bpm;
+ // SkellCore preserves the last valid tempo and rejects malformed host BPM.
+ // Called only from processBlock; this has no locks or heap allocation.
+ if(auto* hostPlayHead=getPlayHead())
+  if(auto position=hostPlayHead->getPosition())
+   skellcore::updateTempoFromPlayhead(hostTempoClock,*position);
+ p.bpm=static_cast<float>(hostTempoClock.bpm());
  route.setOrder(getModuleOrder());
  const auto*sample=meltSample.load(std::memory_order_acquire);
  mixSmooth.setTargetValue(p.mix);
@@ -256,7 +263,11 @@ void SkellAdlibLabProcessor::processBlock(juce::AudioBuffer<float>&buffer,juce::
   left[i]=output.l;if(right)right[i]=output.r;
   outMeter=juce::jmax(outMeter,juce::jmax(std::abs(output.l),std::abs(output.r)));
  }
- inputLevel.store(inMeter);outputLevel.store(outMeter);
+ // Block-size-independent peak decay gives the header/output meters a stable
+ // ~180ms release without changing actual signal samples or host latency.
+ inputLevel.store(inputPeak.update(inMeter,n),std::memory_order_relaxed);
+ outputLevel.store(outputPeak.update(outMeter,n),std::memory_order_relaxed);
+ hostTempoClock.advance(static_cast<std::size_t>(n));
  trackedPitch.store(pitchTracker.getHz());throwActivity.store(route.throwEngine.activity());
 }
 

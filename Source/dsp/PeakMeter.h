@@ -25,3 +25,4 @@ private:
  double rate=48000.0;
  float level=0.f;
 };
+} // namespace adlib

@@ -115,7 +115,7 @@ void SkellAdlibLabEditor::Canvas::paint(juce::Graphics&g){
  g.setColour(palette.raised);g.fillRoundedRectangle(juce::Rectangle<float>(1089,749,132,8),3);
  g.setColour(palette.melt);g.fillRoundedRectangle(juce::Rectangle<float>(1090,750,130*juce::jlimit(0.f,1.f,processor.getOutputLevel()),6),2);
  g.setColour(palette.muted);g.setFont(Theme::mono(9));g.drawText(juce::String("SKELL AUDIO    /    ADLIBLAB v")+juce::String(JucePlugin_VersionString),28,785,290,12,juce::Justification::left);
- g.drawText("SKULL: CLICK TO CYCLE / RIGHT-CLICK TO CHOOSE",930,785,317,12,juce::Justification::right);
+ g.drawText("DRAG HEADERS TO REORDER  /  SKULL: THEMES",930,785,317,12,juce::Justification::right);
 }
 void SkellAdlibLabEditor::Canvas::layoutModules(){
  auto order=processor.getModuleOrder();constexpr int positions[]={30,342,654,966};

@@ -17,26 +17,41 @@ public:
   });
  }
  void paintButton(juce::Graphics&g,bool hover,bool pressed)override{
-  auto r=getLocalBounds().toFloat().reduced(2);
-  auto a=palette.melt;
-  g.setColour(palette.raised);g.fillRoundedRectangle(r,9);
-  g.setColour(a.withAlpha(hover?1.f:.55f));g.drawRoundedRectangle(r,9,1.4f);
-  if(hover){g.setColour(a.withAlpha(.2f));g.drawRoundedRectangle(r.reduced(2.f),8.f,2.f);}
+  const auto bounds=getLocalBounds().toFloat().reduced(1.5f);
+  const auto accent=palette.melt;
+  g.setGradientFill(juce::ColourGradient(palette.raised.brighter(.09f),bounds.getTopLeft(),
+                                        palette.surface,bounds.getBottomRight(),false));
+  g.fillRoundedRectangle(bounds,9.f);
+  g.setColour(accent.withAlpha(hover?.98f:.65f));
+  g.drawRoundedRectangle(bounds.reduced(.6f),8.5f,hover?1.5f:1.1f);
   juce::Graphics::ScopedSaveState save(g);
-  g.addTransform(juce::AffineTransform::translation((r.getWidth()-48.f)*.5f,(r.getHeight()-48.f)*.5f));
+  const auto shape=juce::AffineTransform::scale(bounds.getWidth()/48.f,bounds.getHeight()/48.f)
+       .translated(bounds.getX(),bounds.getY());
+  g.addTransform(shape);
+  // Angular skull mark: replace the old rounded cartoon head, keeping the
+  // clickable theme action and all skins. Pure JUCE paths, no external asset.
   juce::Path bone;
-  bone.startNewSubPath(11,15);bone.cubicTo(11,5,36,5,37,15);bone.cubicTo(42,23,35,27,34,30);
-  bone.lineTo(34,36);bone.lineTo(30,39);bone.lineTo(18,39);bone.lineTo(14,36);bone.lineTo(14,30);
-  bone.cubicTo(7,25,8,21,11,15);bone.closeSubPath();
-  g.setColour(pressed?palette.melt:palette.text.withAlpha(.94f));g.fillPath(bone);
-  g.setColour(palette.background);
-  juce::Path eye1,eye2,nose;
-  eye1.addEllipse(15,19,7.5f,9.5f);eye2.addEllipse(26,19,7.5f,9.5f);
-  nose.startNewSubPath(24,29);nose.lineTo(21,34);nose.lineTo(27,34);nose.closeSubPath();
-  g.fillPath(eye1);g.fillPath(eye2);g.fillPath(nose);
-  for(int i=0;i<3;++i)g.drawLine(19.f+i*5.f,35.f,19.f+i*5.f,39.f,1.3f);
-  g.setColour(a.withAlpha(hover?1.f:.65f));g.drawEllipse(11,8,26,26,1.0f);
-  g.setColour(a);g.fillEllipse(35.f,35.f,5.f,5.f);
+  bone.startNewSubPath(15.f,8.f);bone.lineTo(33.f,8.f);
+  bone.lineTo(40.f,14.f);bone.lineTo(40.f,23.f);bone.lineTo(35.f,29.f);
+  bone.lineTo(35.f,35.f);bone.lineTo(31.f,41.f);bone.lineTo(17.f,41.f);
+  bone.lineTo(13.f,35.f);bone.lineTo(13.f,29.f);bone.lineTo(8.f,23.f);
+  bone.lineTo(8.f,14.f);bone.closeSubPath();
+  g.setColour(pressed?accent:palette.text.withAlpha(.96f));g.fillPath(bone);
+  g.setColour(accent.withAlpha(hover?.90f:.46f));g.strokePath(bone,juce::PathStrokeType(1.1f));
+  juce::Path sockets;
+  sockets.startNewSubPath(13.f,22.f);sockets.lineTo(22.f,23.f);
+  sockets.lineTo(20.5f,30.f);sockets.lineTo(15.5f,28.5f);sockets.closeSubPath();
+  sockets.startNewSubPath(35.f,22.f);sockets.lineTo(26.f,23.f);
+  sockets.lineTo(27.5f,30.f);sockets.lineTo(32.5f,28.5f);sockets.closeSubPath();
+  sockets.startNewSubPath(24.f,29.f);sockets.lineTo(20.8f,34.f);
+  sockets.lineTo(27.2f,34.f);sockets.closeSubPath();
+  g.setColour(palette.background);g.fillPath(sockets);
+  g.setColour(palette.background.withAlpha(.88f));
+  for(float x: {20.f,24.f,28.f})g.drawLine(x,36.f,x,40.f,1.25f);
+  g.setColour(accent.withAlpha(.85f));
+  g.drawLine(15.f,17.f,21.f,18.f,1.2f);
+  g.drawLine(33.f,17.f,27.f,18.f,1.2f);
+  g.fillEllipse(40.f,39.f,4.2f,4.2f);
  }
 private:const Theme::Palette&palette;
 };

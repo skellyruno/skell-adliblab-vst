@@ -8,7 +8,7 @@ public:
  std::function<void(int)>onDrop;
  explicit DragGrip(const Theme::Palette&pal):palette(pal){}
  void paint(juce::Graphics&g)override{
-  g.setColour(palette.muted);
+  g.setColour(palette.text.withAlpha(.64f));
   for(int y=0;y<3;++y)for(int x=0;x<2;++x)g.fillEllipse((float)x*6+6,(float)y*6+5,2.5f,2.5f);
  }
  void mouseDown(const juce::MouseEvent&e)override{start=e.getScreenX();}
@@ -16,23 +16,35 @@ public:
 private:int start=0;const Theme::Palette&palette;
 };
 // Retains ToggleButton/APVTS behavior, but renders a clean power symbol.
+// Automatable on/off control; the lit ring is visibly different from OFF.
 class ModulePowerButton final:public juce::ToggleButton {
 public:
- ModulePowerButton(const Theme::Palette& pal,int id):palette(pal),moduleId(id){setTooltip("Turn effect on or off");}
- void paintButton(juce::Graphics&g,bool hover,bool down)override{
+ ModulePowerButton(const Theme::Palette&pal,int id):palette(pal),moduleId(id){
+  setTooltip("Power: enable or bypass this effect");
+ }
+ void paintButton(juce::Graphics&g,bool hover,bool pressed)override{
   auto r=getLocalBounds().toFloat().reduced(1.f);
-  auto accent=palette.accent(moduleId);
-  g.setColour(palette.raised.brighter(hover?.12f:0.f));g.fillRoundedRectangle(r,7.f);
-  g.setColour(hover?accent:palette.border);g.drawRoundedRectangle(r,7.f,1.f);
-  auto m=r.getCentre();g.setColour(getToggleState()?accent:palette.muted);
-  juce::Path arc;
-  for(int i=0;i<=32;++i){
-   float a=-2.4f+i*4.8f/32.f,x=m.x+6.f*std::sin(a),y=m.y-6.f*std::cos(a);
-   if(i==0)arc.startNewSubPath(x,y);else arc.lineTo(x,y);
+  const bool enabled=getToggleState();
+  const auto accent=palette.accent(moduleId);
+  g.setColour(pressed?palette.background:palette.raised);
+  g.fillRoundedRectangle(r,8.f);
+  g.setColour(enabled?accent.withAlpha(hover?1.f:.77f):palette.muted.withAlpha(.70f));
+  g.drawRoundedRectangle(r.reduced(.5f),7.5f,enabled?1.4f:1.f);
+  const auto centre=r.getCentre();
+  const float radius=7.f;
+  juce::Path powerArc;
+  constexpr int segments=36;
+  for(int i=0;i<=segments;++i){
+   const float radians=.76f+(juce::MathConstants<float>::twoPi-1.52f)*(float)i/(float)segments;
+   const float px=centre.x+radius*std::sin(radians);
+   const float py=centre.y-radius*std::cos(radians);
+   if(i==0)powerArc.startNewSubPath(px,py);else powerArc.lineTo(px,py);
   }
-  g.strokePath(arc,juce::PathStrokeType(2.f));
-  g.drawLine(m.x,m.y-8.f,m.x,m.y-1.f,2.f);
-  if(down){g.setColour(accent.withAlpha(.15f));g.fillEllipse(m.x-9.f,m.y-9.f,18.f,18.f);}
+  g.setColour(enabled?accent:palette.muted.withAlpha(.82f));
+  g.strokePath(powerArc,juce::PathStrokeType(enabled?2.5f:2.1f,
+                        juce::PathStrokeType::curved,juce::PathStrokeType::rounded));
+  g.drawLine(centre.x,centre.y-9.f,centre.x,centre.y-1.5f,enabled?2.5f:2.1f);
+  if(enabled){g.setColour(accent.withAlpha(hover?.28f:.16f));g.fillEllipse(centre.x-3.f,centre.y-2.f,6.f,6.f);}
  }
 private:const Theme::Palette&palette;int moduleId;
 };
@@ -43,8 +55,8 @@ public:
  using ComboAttachment=juce::AudioProcessorValueTreeState::ComboBoxAttachment;
  ModulePanel(SkellAdlibLabProcessor&p,const Theme::Palette&pal,int id,juce::String name,const char*enabled)
   :processor(p),palette(pal),moduleId(id),title(std::move(name)),grip(palette),on(palette,id){
-   grip.onDrop=[this](int x){if(requestReorder)requestReorder(moduleId,x);};addAndMakeVisible(grip);grip.setBounds(249,11,29,26);
-   on.setButtonText("");addAndMakeVisible(on);on.setBounds(209,11,29,29);
+   grip.onDrop=[this](int x){if(requestReorder)requestReorder(moduleId,x);};addAndMakeVisible(grip);grip.setBounds(249,11,29,28);
+   on.setButtonText("");addAndMakeVisible(on);on.setBounds(207,10,31,31);
    on.onClick=[this]{updateBypassVisual();};
    toggles.push_back(std::make_unique<ButtonAttachment>(p.parameters,enabled,on));
   }
@@ -76,7 +88,7 @@ public:
   lastEnabled=enabled?1:0;
   for(int i=0;i<getNumChildComponents();++i){
    auto* child=getChildComponent(i);
-   if(child!=&on&&child!=&grip)child->setAlpha(enabled?1.f:.58f);
+   if(child!=&on&&child!=&grip)child->setAlpha(enabled?1.f:.80f);
   }
   repaint();
  }
@@ -96,7 +108,9 @@ public:
   g.setGradientFill(juce::ColourGradient(palette.panel.brighter(.035f),r.getTopLeft(),
                                         palette.surface,r.getBottomRight(),false));
   g.fillRoundedRectangle(r,11.f);
-  g.setColour(palette.border.withAlpha(.85f));g.drawRoundedRectangle(r,11.f,1.f);
+  g.setColour(palette.background.darker(.3f));g.drawRoundedRectangle(r,11.f,2.f);
+  g.setColour(palette.border.brighter(.20f).withAlpha(.98f));
+  g.drawRoundedRectangle(r.reduced(1.25f),10.f,1.2f);
   g.setGradientFill(juce::ColourGradient(accent().withAlpha(.15f),r.getTopLeft(),
                                         accent().withAlpha(.055f),juce::Point<float>(r.getRight(),53.f),false));
   g.fillRoundedRectangle(r.withHeight(52.f),10.f);
@@ -110,19 +124,19 @@ public:
    g.setColour(accent().withAlpha(.83f));g.setFont(Theme::mono(10));
    g.drawText(juce::String(moduleId+1).paddedLeft('0',2),186,18,18,16,juce::Justification::centred);
   }else{
-   g.setColour(palette.background.withAlpha(.14f));g.fillRoundedRectangle(1.f,54.f,288.f,399.f,9.f);
+   g.setColour(palette.background.withAlpha(.07f));g.fillRoundedRectangle(1.f,54.f,288.f,399.f,9.f);
    g.setColour(palette.muted);g.setFont(Theme::mono(10));
    g.drawText("OFF",157,17,43,18,juce::Justification::right);
   }
   g.setColour(palette.muted);g.setFont(Theme::mono(9));
-  g.drawText(dragging?"MOVING":"DRAG",237,38,45,12,juce::Justification::centred);
+  // Six-dot grip remains the drag affordance; extra microtext removed.
  }
 
 protected:
  static juce::String formatReadout(const juce::String&param,double v){
   const auto whole=[](double n){return juce::String(juce::roundToInt(n));};
   if(param=="throwFilterStart"||param=="throwFilterEnd")
-   return v>=1000.?whole(v/1000.)+"k":whole(v)+"Hz";
+   return v>=999.5?whole(v/1000.)+"k":whole(v)+"Hz";
   if(param=="stackSpread")return whole(v)+"ct";
   if(param=="stackTime"||param=="charGlide")return whole(v)+"ms";
   if(param=="charCrush"||param=="throwRepeats"||param=="meltRoot")return whole(v);

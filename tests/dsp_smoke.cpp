@@ -384,7 +384,36 @@ static void testMeltSampleClearFade(){
  }
 }
 
+// The 24-band envelope and the MELT loudness follower should have the same
+// physical response time at host sample rates, not a per-sample response.
+static void testSampleRateInvariantMeltFollowers(){
+ const float base=adlib::Vocoder::envelopeCoefficient(.45f,44100.);
+ const float reference=std::pow(1.f-base,44100.f*.03f);
+ for(double sr:{22050.,44100.,48000.,96000.,192000.}){
+  const float a=adlib::Vocoder::envelopeCoefficient(.45f,sr);
+  assert(a>0.f&&a<1.f&&std::isfinite(a));
+  const float response=std::pow(1.f-a,(float)(sr*.03));
+  assert(std::abs(response-reference)<.0008f);
+ }
+ // MELT pitch-follow mode isolates its loudness envelope from the vocoder.
+ // Compare output after 60ms at different host sample rates.
+ float referenceOut=-1.f;
+ for(double sr:{22050.,44100.,48000.,96000.,192000.}){
+  adlib::MeltEngine engine;engine.prepare(sr);
+  adlib::Params p;p.meltOn=true;p.meltMode=1;p.meltAmount=1.f;
+  p.meltFollowPitch=0.f;p.meltFollowLoudness=1.f;p.meltSmooth=.4f;
+  adlib::ClipBank::Clip clip;clip.mono.assign(44100,.65f);
+  adlib::Stereo output;
+  for(int i=0;i<(int)(sr*.06);++i)
+   output=engine.tick({},p,&clip,220.f,.075f);
+  assert(std::isfinite(output.l)&&std::isfinite(output.r));
+  if(referenceOut<0.f)referenceOut=output.l;
+  else assert(std::abs(output.l-referenceOut)<.018f);
+ }
+}
+
 int main(){
+ testSampleRateInvariantMeltFollowers();
  testThrowShortDivisionBoundary();
  testMeltSampleClearFade();
  testAtomicModuleOrder();

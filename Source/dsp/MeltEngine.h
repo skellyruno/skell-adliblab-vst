@@ -11,6 +11,7 @@ public:
   sampleRate=juce::jmax(8000.0,sr);vocoder.prepare(sampleRate);
   position=0;previousPosition=0;lastSample=nullptr;previousSample=nullptr;crossfadeRemaining=0;level=0;wetAmount=0;pitchRate=targetPitchRate=1;
   controlCountdown=0;
+  loudnessAlpha=1.f-std::pow(1.f-.0062f,(float)(44100.0/sampleRate));
   wetSmoothing=1.f-std::exp(-1.f/(float)(sampleRate*.015));
   pitchSmoothing=1.f-std::exp(-1.f/(float)(sampleRate*.025));
  }
@@ -48,6 +49,8 @@ public:
     rate=juce::jmap(clamp(p.meltFollowPitch,0.f,1.f),1.f,clamp(pitchHz/rootHz,.5f,2.f));
    }
    targetPitchRate=rate;
+   const float base=clamp(.01f*(1.f-clamp(p.meltSmooth,0.f,1.f))+.0002f,.0002f,.0102f);
+   loudnessAlpha=1.f-std::pow(1.f-base,(float)(44100.0/sampleRate));
   }
   pitchRate+=pitchSmoothing*(targetPitchRate-pitchRate);
   float carrier=carrierAt(sample,position);
@@ -63,7 +66,7 @@ public:
    carrier=juce::jmap(blend,previous,carrier);
    if(--crossfadeRemaining==0)previousSample=nullptr;
   }
-  level=flushTiny(level+(.01f*(1.f-clamp(p.meltSmooth,0.f,1.f))+.0002f)*(inputEnvelope-level));
+  level=flushTiny(level+loudnessAlpha*(inputEnvelope-level));
   const float follow=juce::jmap(clamp(p.meltFollowLoudness,0.f,1.f),1.f,clamp(level*10.f,0.f,1.f));
   const float mono=(s.l+s.r)*.5f;
   float out=0;
@@ -88,7 +91,7 @@ private:
  const ClipBank::Clip*lastSample=nullptr,*previousSample=nullptr;
  float previousPosition=0;
  int crossfadeRemaining=0;
- float position=0,level=0,wetAmount=0,wetSmoothing=.002f;
+ float position=0,level=0,wetAmount=0,wetSmoothing=.002f,loudnessAlpha=.0062f;
  float pitchRate=1,targetPitchRate=1,pitchSmoothing=.001f;
  int controlCountdown=0;
 };

@@ -27,6 +27,14 @@ elseif(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/SkellCore/CMakeLists.txt")
   add_subdirectory(SkellCore)
 endif()
 
+# Preserve bundled DSP/UI targets and fetch only the tested shared tour header.
+FetchContent_Declare(SkellGuidedTourHeaders
+  GIT_REPOSITORY https://github.com/skellyruno/skell-vst-template.git
+  GIT_TAG 3306ad495c93e062e39b8abbf079534b0b53da4e
+  GIT_SHALLOW FALSE
+  SOURCE_SUBDIR _guided_tour_headers_only)
+FetchContent_MakeAvailable(SkellGuidedTourHeaders)
+
 juce_add_plugin(SkellAdlibLab
   COMPANY_NAME "Skell Audio"
   BUNDLE_ID "uno.skellyr.adliblab"
@@ -45,7 +53,7 @@ juce_generate_juce_header(SkellAdlibLab)
 file(GLOB_RECURSE ADLIB_SOURCES CONFIGURE_DEPENDS
     "Source/*.cpp" "Source/*.h")
 target_sources(SkellAdlibLab PRIVATE ${ADLIB_SOURCES})
-target_include_directories(SkellAdlibLab PRIVATE Source)
+target_include_directories(SkellAdlibLab PRIVATE Source "${skellguidedtourheaders_SOURCE_DIR}/SkellCore/include")
 target_compile_features(SkellAdlibLab PRIVATE cxx_std_17)
 target_compile_definitions(SkellAdlibLab PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_VST3_CAN_REPLACE_VST2=0)
 target_link_libraries(SkellAdlibLab PRIVATE

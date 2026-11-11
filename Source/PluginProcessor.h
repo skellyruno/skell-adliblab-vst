@@ -1,5 +1,6 @@
 #pragma once
 #include <JuceHeader.h>
+#include <SkellCore/WorldLink.h>
 #include "dsp/ChainRouter.h"
 #include "dsp/ClipBank.h"
 #include "dsp/PitchTracker.h"
@@ -8,9 +9,10 @@
 #include "dsp/ChaosEngine.h"
 #include "dsp/ModuleOrder.h"
 
-class SkellAdlibLabProcessor final : public juce::AudioProcessor {
+class SkellAdlibLabProcessor final : public juce::AudioProcessor, private juce::Timer {
 public:
  SkellAdlibLabProcessor();
+ ~SkellAdlibLabProcessor() override;
  void prepareToPlay(double,int) override;
  void releaseResources() override {}
  bool isBusesLayoutSupported(const BusesLayout&) const override;
@@ -58,6 +60,11 @@ public:
  int getNote()const{return activeMidiNote.load();}
  adlib::Params loadParams()const;
 private:
+ void timerCallback() override;
+ // No message transport or parameter calls from audio callbacks.
+ skellcore::world::WorldLink skellKeyLink_{"skell.adliblab","Skell AdlibLab"};
+ std::uint64_t lastSkellKeyPacket_=0;
+ std::atomic<float> receivedA4_{440.f};
  adlib::ChainRouter route;
  adlib::ChaosEngine chaos;
  adlib::PitchTracker pitchTracker;

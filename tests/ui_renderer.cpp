@@ -56,6 +56,7 @@ int main(int argc,char** argv){
   param(processor,"stackOn",1);param(processor,"charOn",1);
   param(processor,"throwOn",1);param(processor,"meltOn",0);
   SkellAdlibLabEditor editor(processor);
+  editor.dismissGuidedTourForScreenshot();
   for(const auto& issue:editor.runUIInteractionTests()){
    std::fprintf(stderr,"UI interaction: %s\n",issue.toRawUTF8());++failures;
   }
@@ -75,7 +76,14 @@ int main(int argc,char** argv){
     scene.width=size.width;scene.height=size.height;scene.theme=theme;scene.mode=state;
     options.scenes.push_back(scene);
    }
+  if(theme==0)
+   options.scenes.push_back({"guided-tour-minimum",800,500,0,4,false});
   options.configure=[&](const auto& scene){
+   editor.dismissGuidedTourForScreenshot();
+   if(scene.mode==4 && !editor.showGuidedTourForScreenshot()){
+    std::fprintf(stderr,"Guided tour failed to display on actual AdlibLab editor\n");
+    ++failures;
+   }
    editor.setPresetMenuForScreenshot(scene.mode==3);
    param(processor,"charOn",scene.mode==1?0.f:1.f);
    param(processor,"throwOn",scene.mode==1?0.f:1.f);
@@ -91,8 +99,11 @@ int main(int argc,char** argv){
   options.mustDiffer={{"main-minimum","bypass-minimum"},
                       {"main-design","selected-design"},
                       {"main-design","preset-design"}};
+  if(theme==0)
+    options.mustDiffer.push_back({"main-minimum","guided-tour-minimum"});
   const auto report=skellcore::ui::headless::render(editor,folder,options);
   captured+=report.captured;
+  editor.dismissGuidedTourForScreenshot();
   for(const auto& err:report.errors){
    std::fprintf(stderr,"%s: %s\n",themes[(size_t)theme],err.toRawUTF8());++failures;
   }
@@ -111,7 +122,7 @@ int main(int argc,char** argv){
   }
  }
  if(!skellcore::ui::headless::writePng(overview,out.getChildFile("contact-sheet.png")))++failures;
- if(captured!=44){std::fprintf(stderr,"Expected 44 actual UI PNGs, got %d\n",captured);++failures;}
+ if(captured!=45){std::fprintf(stderr,"Expected 45 actual UI PNGs, got %d\n",captured);++failures;}
  std::printf("SkellCore real editor: %d scenes, %d errors\n",captured,failures);
  processor.releaseResources();
  return failures==0?0:1;

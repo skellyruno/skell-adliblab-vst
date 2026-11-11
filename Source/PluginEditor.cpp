@@ -65,6 +65,29 @@ void SkellAdlibLabEditor::Canvas::applyTheme(int index){
  editor.applyLookAndFeelPalette(palette);
  bank.repaint();keyboard.repaint();presetMenu.repaint();repaint();
 }
+std::vector<skellcore::ui::GuidedTourStep> SkellAdlibLabEditor::Canvas::tourSteps() {
+  std::vector<skellcore::ui::GuidedTourStep> steps;
+  steps.emplace_back(&header,"START WITH A PATCH",
+      "Pick a starting patch above, or open Settings to replay this tutorial.");
+  steps.emplace_back(&stack,"STACK YOUR VOICE",
+      "Create layers and adjust how widely your adlibs spread.");
+  steps.emplace_back(&character,"CHANGE CHARACTER",
+      "Choose vocal character and tone without changing your original recording.");
+  steps.emplace_back(&throwPanel,"ADLIB THROWS",
+      "Set timed throws and repeats; use the panel's controls for movement.");
+  steps.emplace_back(&melt,"MELT AND TEXTURE",
+      "Shape the texture and transition of your adlibs.");
+  steps.emplace_back(&bank,"RECORD AND TRIGGER",
+      "Use the clip bank and keyboard to perform or trigger captured vocal phrases.",
+      std::function<void()>{},&keyboard);
+  steps.emplace_back(&chaos,"CONTROL THE CHAOS",
+      "Use CHAOS for creative variation; set the final WIDTH and GAIN to taste.");
+  return steps;
+}
+skellcore::ui::GuidedTourPalette SkellAdlibLabEditor::Canvas::tourPalette()const {
+  return {palette.stack,palette.surface,palette.text,palette.muted,
+          juce::Colour(0xd9000000)};
+}
 void SkellAdlibLabEditor::Canvas::sliderValueChanged(juce::Slider* slider){
  if(slider==&width)widthReadout.setText(juce::String(juce::roundToInt(width.getValue()*100.))+"%",juce::dontSendNotification);
  if(slider==&gain)gainReadout.setText(juce::String(juce::roundToInt(gain.getValue()))+"dB",juce::dontSendNotification);
@@ -150,8 +173,27 @@ SkellAdlibLabEditor::SkellAdlibLabEditor(SkellAdlibLabProcessor&p)
  auto currentWidth=(int)processor.parameters.state.getProperty("editorWidth",1024);
  setSize(juce::jlimit(800,1920,currentWidth),(int)std::round(juce::jlimit(800,1920,currentWidth)*800.0/1280.0));
  startTimerHz(30);
+ guidedTour=std::make_unique<skellcore::ui::GuidedTourController>(
+     *this,"skell-adliblab-vst",1);
+ showGuidedTour(true);
 }
-SkellAdlibLabEditor::~SkellAdlibLabEditor(){stopTimer();canvas.setLookAndFeel(nullptr);}
+SkellAdlibLabEditor::~SkellAdlibLabEditor(){
+ stopTimer();guidedTour.reset();canvas.setLookAndFeel(nullptr);
+}
+void SkellAdlibLabEditor::showGuidedTour(bool firstRun){
+ if(!guidedTour)return;
+ guidedTour->setPalette(canvas.tourPalette());
+ guidedTour->setSteps(canvas.tourSteps());
+ if(firstRun)guidedTour->startIfFirstRun();
+ else guidedTour->replay();
+}
+bool SkellAdlibLabEditor::showGuidedTourForScreenshot(){
+ showGuidedTour(false);
+ return guidedTour && guidedTour->isShowing();
+}
+void SkellAdlibLabEditor::dismissGuidedTourForScreenshot(){
+ if(guidedTour)guidedTour->dismiss();
+}
 void SkellAdlibLabEditor::applyLookAndFeelPalette(const Theme::Palette&p){lookAndFeel.applyPalette(p);canvas.repaint();}
 void SkellAdlibLabEditor::setPresetMenuForScreenshot(bool visible){canvas.showPresetMenu(visible);}
 juce::StringArray SkellAdlibLabEditor::runUIInteractionTests(){return canvas.runControlChecks();}

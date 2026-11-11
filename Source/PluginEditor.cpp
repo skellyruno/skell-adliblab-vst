@@ -2,7 +2,7 @@
 SkellAdlibLabEditor::Canvas::Canvas(SkellAdlibLabProcessor&p,SkellAdlibLabEditor&ed)
  :processor(p),editor(ed),palette(Theme::makePalette(p.getThemeIndex())),themeIndex(p.getThemeIndex()),
  header(p,palette),stack(p,palette),character(p,palette),throwPanel(p,palette),melt(p,palette),
- chaos(p,palette),bank(p,palette),keyboard(p,palette),
+ chaos(p,palette),bank(p,palette),keyboard(p,palette),presetMenu(palette),
  widthAtt(p.parameters,"width",width),gainAtt(p.parameters,"outputGain",gain),
  limiterAtt(p.parameters,"safetyLimiter",limiter),formantAtt(p.parameters,"kbFormantLock",formant),
  velIntensityAtt(p.parameters,"kbVelIntensity",velIntensity),velTailAtt(p.parameters,"kbVelTail",velTail),reverseAtt(p.parameters,"kbAltReverse",reverse),
@@ -11,6 +11,7 @@ SkellAdlibLabEditor::Canvas::Canvas(SkellAdlibLabProcessor&p,SkellAdlibLabEditor
  addAndMakeVisible(header);header.setBounds(15,8,1250,65);
  header.onThemeCycle=[this]{int next=(themeIndex+1)%4;processor.setThemeIndex(next);applyTheme(next);};
  header.onThemeSelect=[this](int next){processor.setThemeIndex(next);applyTheme(next);};
+ header.onPresetClicked=[this]{showPresetMenu(!presetMenu.isVisible());};
  for(auto* module:modules){addAndMakeVisible(module);module->requestReorder=[this](int id,int displacement){reorder(id,displacement);};}
  layoutModules();
  addAndMakeVisible(chaos);chaos.setBounds(27,567,233,214);
@@ -22,8 +23,8 @@ SkellAdlibLabEditor::Canvas::Canvas(SkellAdlibLabProcessor&p,SkellAdlibLabEditor
   s->setColour(juce::Slider::textBoxOutlineColourId,juce::Colours::transparentBlack);
   addAndMakeVisible(s);
  }
- width.textFromValueFunction=[](double d){return juce::String(d,2);};
- gain.textFromValueFunction=[](double d){return juce::String(d,1)+"dB";};
+ width.textFromValueFunction=[](double d){return juce::String(juce::roundToInt(d*100.))+"%";};
+ gain.textFromValueFunction=[](double d){return juce::String(juce::roundToInt(d))+"dB";};
  width.setBounds(1028,601,91,91);gain.setBounds(1132,601,91,91);
  limiter.setButtonText("SOFT CLIP");formant.setButtonText("FORMANT LOCK");
  velIntensity.setButtonText("VEL > INT");velTail.setButtonText("VEL > TAIL");reverse.setButtonText("ALT REVERSE");
@@ -32,6 +33,10 @@ SkellAdlibLabEditor::Canvas::Canvas(SkellAdlibLabProcessor&p,SkellAdlibLabEditor
  formant.setBounds(286,753,147,25);velIntensity.setBounds(447,753,131,25);
  velTail.setBounds(583,753,130,25);reverse.setBounds(726,753,148,25);
  header.refreshTheme();for(auto*module:modules)module->refreshTheme();
+ addAndMakeVisible(presetMenu);presetMenu.setBounds(0,0,Theme::designWidth,Theme::designHeight);
+ presetMenu.setVisible(false);
+ presetMenu.onChoice=[this](int id){showPresetMenu(false);header.applyPresetSelection(id);};
+ presetMenu.onDismiss=[this]{showPresetMenu(false);};
 }
 void SkellAdlibLabEditor::Canvas::applyTheme(int index){
  themeIndex=juce::jlimit(0,3,index);
@@ -47,7 +52,33 @@ void SkellAdlibLabEditor::Canvas::applyTheme(int index){
   t->setColour(juce::ToggleButton::tickColourId,palette.melt);
  }
  editor.applyLookAndFeelPalette(palette);
- bank.repaint();keyboard.repaint();repaint();
+ bank.repaint();keyboard.repaint();presetMenu.repaint();repaint();
+}
+void SkellAdlibLabEditor::Canvas::showPresetMenu(bool visible){
+ presetMenu.setVisible(visible);
+ if(visible){presetMenu.toFront(false);presetMenu.grabKeyboardFocus();}
+ presetMenu.repaint();
+}
+juce::StringArray SkellAdlibLabEditor::Canvas::runControlChecks(){
+ juce::StringArray errors;
+ juce::MemoryBlock saved;processor.getStateInformation(saved);
+ const auto value=[this](const char*id){return processor.parameters.getRawParameterValue(id)->load();};
+ header.applyPresetSelection(3);
+ if((int)value("charType")!=1||value("charIntensity")<.8f||value("stackOn")>.5f)
+  errors.add("Robot preset did not update real controls");
+ if(header.getPresetLabel()!="ROBOT INCOMING")errors.add("Preset title failed to update");
+ const auto oldType=value("charType"),oldSpread=value("stackSpread"),oldChaos=value("chaos");
+ header.shufflePatch();
+ if(value("chaos")<.3f||value("stackSpread")<100.f||header.getPresetLabel()!="SHUFFLED PATCH")
+  errors.add("Shuffle did not change real automatable parameters");
+ if(oldType==value("charType")&&oldSpread==value("stackSpread")&&oldChaos==value("chaos"))
+  errors.add("Shuffle left sound controls unchanged");
+ header.applyPresetSelection(1);
+ if(std::abs(value("chaos")-.25f)>.01f||value("stackOn")<.5f)
+  errors.add("Init Patch failed to restore defaults");
+ if(saved.getSize()>0)processor.setStateInformation(saved.getData(),(int)saved.getSize());
+ header.refreshPresetLabel();layoutModules();showPresetMenu(false);
+ return errors;
 }
 void SkellAdlibLabEditor::Canvas::paint(juce::Graphics&g){
  g.fillAll(palette.background);
@@ -107,6 +138,8 @@ SkellAdlibLabEditor::SkellAdlibLabEditor(SkellAdlibLabProcessor&p)
 }
 SkellAdlibLabEditor::~SkellAdlibLabEditor(){stopTimer();canvas.setLookAndFeel(nullptr);}
 void SkellAdlibLabEditor::applyLookAndFeelPalette(const Theme::Palette&p){lookAndFeel.applyPalette(p);canvas.repaint();}
+void SkellAdlibLabEditor::setPresetMenuForScreenshot(bool visible){canvas.showPresetMenu(visible);}
+juce::StringArray SkellAdlibLabEditor::runUIInteractionTests(){return canvas.runControlChecks();}
 void SkellAdlibLabEditor::timerCallback(){
  const bool clipChanged=processor.collectRecordedClip();
  if(canvas.getThemeIndex()!=processor.getThemeIndex())canvas.applyTheme(processor.getThemeIndex());

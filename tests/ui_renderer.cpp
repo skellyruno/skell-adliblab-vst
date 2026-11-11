@@ -48,7 +48,7 @@ int main(int argc,char** argv){
  SkellAdlibLabProcessor processor;
  processor.prepareToPlay(48000.,512);
  int failures=0, captured=0;
- juce::Image overview(juce::Image::RGB,3*800,4*(500+28),true);
+ juce::Image overview(juce::Image::RGB,4*800,4*(500+28),true);
  juce::Graphics sheet(overview);
  std::array<juce::Image,4> mainShots{};
  for(int theme=0;theme<4;++theme){
@@ -56,6 +56,9 @@ int main(int argc,char** argv){
   param(processor,"stackOn",1);param(processor,"charOn",1);
   param(processor,"throwOn",1);param(processor,"meltOn",0);
   SkellAdlibLabEditor editor(processor);
+  for(const auto& issue:editor.runUIInteractionTests()){
+   std::fprintf(stderr,"UI interaction: %s\n",issue.toRawUTF8());++failures;
+  }
   const auto folder=out.getChildFile(themes[(size_t)theme]);
   skellcore::ui::headless::Options options;
   options.project="Skell AdlibLab actual JUCE AudioProcessorEditor";
@@ -73,6 +76,7 @@ int main(int argc,char** argv){
     options.scenes.push_back(scene);
    }
   options.configure=[&](const auto& scene){
+   editor.setPresetMenuForScreenshot(scene.mode==3);
    param(processor,"charOn",scene.mode==1?0.f:1.f);
    param(processor,"throwOn",scene.mode==1?0.f:1.f);
    param(processor,"charType",scene.mode==3?1.f:0.f);
@@ -92,7 +96,7 @@ int main(int argc,char** argv){
   for(const auto& err:report.errors){
    std::fprintf(stderr,"%s: %s\n",themes[(size_t)theme],err.toRawUTF8());++failures;
   }
-  for(int col=0;col<3;++col){
+  for(int col=0;col<4;++col){
    skellcore::ui::headless::Scene state;
    state.mode=col;options.configure(state);
    const auto snap=skellcore::ui::headless::capture(editor,800,500);

@@ -10,6 +10,7 @@
 #include "ui/MiniKeyboard.h"
 #include "ui/ChaosKnob.h"
 #include "ui/HeaderBar.h"
+#include "ui/PresetMenuView.h"
 class SkellAdlibLabEditor final:public juce::AudioProcessorEditor,private juce::Timer {
 public:
  explicit SkellAdlibLabEditor(SkellAdlibLabProcessor&);
@@ -17,6 +18,8 @@ public:
  void paint(juce::Graphics&)override;
  void resized()override;
  void applyLookAndFeelPalette(const Theme::Palette&);
+ void setPresetMenuForScreenshot(bool);
+ juce::StringArray runUIInteractionTests();
 private:
  class Canvas final:public juce::Component {
  public:
@@ -26,6 +29,8 @@ private:
   void layoutModules();
   void refreshMeters(bool clipsChanged);
   void applyTheme(int);
+  void showPresetMenu(bool);
+  juce::StringArray runControlChecks();
   int getThemeIndex()const{return themeIndex;}
   const Theme::Palette&getPalette()const{return palette;}
  private:
@@ -42,6 +47,7 @@ private:
   ChaosKnob chaos;
   ClipBankView bank;
   MiniKeyboard keyboard;
+  PresetMenuView presetMenu;
   juce::Slider width,gain;
   juce::ToggleButton limiter,formant,velIntensity,velTail,reverse;
   juce::AudioProcessorValueTreeState::SliderAttachment widthAtt,gainAtt;

@@ -89,6 +89,38 @@ SkellAdlibLabProcessor::SkellAdlibLabProcessor():AudioProcessor(
   .withOutput("Output",juce::AudioChannelSet::stereo(),true)),
  parameters(*this,nullptr,"PARAMETERS",createLayout()) {
  formats.registerBasicFormats();
+ // Listen automatically; the only publish trigger remains SEND TO TUNE in SkellKey.
+ skellKeyLink_.join();
+ startTimerHz(5);
+}
+SkellAdlibLabProcessor::~SkellAdlibLabProcessor() {
+ stopTimer();
+ skellKeyLink_.leave();
+}
+
+void SkellAdlibLabProcessor::timerCallback() {
+ if (!skellKeyLink_.requested()) skellKeyLink_.join();
+ skellcore::world::MusicalTuning tuning;
+ std::uint32_t version=0;
+ if (!skellKeyLink_.latestMusicalTuning(tuning,version)) {
+  lastSkellKeyPacket_=0;
+  return;
+ }
+ const auto packet=skellcore::world::packMusicalTuning(tuning,1);
+ if (packet==lastSkellKeyPacket_) return;
+ const auto set=[this](const char* id,float value) {
+  auto* p=parameters.getParameter(id);
+  const auto* current=parameters.getRawParameterValue(id);
+  if (p && current && std::abs(current->load(std::memory_order_relaxed)-value)>0.01f) {
+   p->beginChangeGesture();
+   p->setValueNotifyingHost(p->convertTo0to1(value));
+   p->endChangeGesture();
+  }
+ };
+ set("stackKey",float(tuning.root));
+ set("stackScale",float(tuning.mode)); // Major=0, Minor=1
+ receivedA4_.store(float(tuning.a4Hz()),std::memory_order_release);
+ lastSkellKeyPacket_=packet;
 }
 
 bool SkellAdlibLabProcessor::isBusesLayoutSupported(const BusesLayout& l) const {

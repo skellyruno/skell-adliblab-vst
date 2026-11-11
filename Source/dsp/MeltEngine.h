@@ -2,6 +2,7 @@
 #include "EngineTypes.h"
 #include "ClipBank.h"
 #include "Vocoder.h"
+#include <limits>
 namespace adlib {
 // Sample-carrier vocoder / pitch-follow prototype. No allocation in tick().
 // Loop boundaries and enable/mix automation have short de-click envelopes.
@@ -10,7 +11,7 @@ public:
  void prepare(double sr){
   sampleRate=juce::jmax(8000.0,sr);vocoder.prepare(sampleRate);
   position=0;previousPosition=0;lastSample=nullptr;previousSample=nullptr;crossfadeRemaining=0;level=0;wetAmount=0;pitchRate=targetPitchRate=1;
-  controlCountdown=0;
+  controlCountdown=0;lastMeltSmooth=std::numeric_limits<float>::quiet_NaN();
   loudnessAlpha=1.f-std::pow(1.f-.0062f,(float)(44100.0/sampleRate));
   wetSmoothing=1.f-std::exp(-1.f/(float)(sampleRate*.015));
   pitchSmoothing=1.f-std::exp(-1.f/(float)(sampleRate*.025));
@@ -49,8 +50,11 @@ public:
     rate=juce::jmap(clamp(p.meltFollowPitch,0.f,1.f),1.f,clamp(pitchHz/rootHz,.5f,2.f));
    }
    targetPitchRate=rate;
-   const float base=clamp(.01f*(1.f-clamp(p.meltSmooth,0.f,1.f))+.0002f,.0002f,.0102f);
-   loudnessAlpha=1.f-std::pow(1.f-base,(float)(44100.0/sampleRate));
+   if(!std::isfinite(lastMeltSmooth)||std::abs(lastMeltSmooth-p.meltSmooth)>1.e-5f){
+    lastMeltSmooth=p.meltSmooth;
+    const float base=clamp(.01f*(1.f-clamp(p.meltSmooth,0.f,1.f))+.0002f,.0002f,.0102f);
+    loudnessAlpha=1.f-std::pow(1.f-base,(float)(44100.0/sampleRate));
+   }
   }
   pitchRate+=pitchSmoothing*(targetPitchRate-pitchRate);
   float carrier=carrierAt(sample,position);
@@ -92,6 +96,7 @@ private:
  float previousPosition=0;
  int crossfadeRemaining=0;
  float position=0,level=0,wetAmount=0,wetSmoothing=.002f,loudnessAlpha=.0062f;
+ float lastMeltSmooth=0.f;
  float pitchRate=1,targetPitchRate=1,pitchSmoothing=.001f;
  int controlCountdown=0;
 };

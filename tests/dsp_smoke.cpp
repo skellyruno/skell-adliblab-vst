@@ -412,7 +412,20 @@ static void testSampleRateInvariantMeltFollowers(){
  }
 }
 
+static void testBalancedDefaultStack(){
+ adlib::StackEngine engine;engine.prepare(48000.);
+ assert(std::abs(engine.getVoicePan(0)+engine.getVoicePan(1))<1.e-6f);
+ assert(std::abs(engine.getVoicePitch(0)+engine.getVoicePitch(1))<1.e-6f);
+ assert(std::abs(engine.getVoicePan(2))<1.e-6f);
+ assert(std::abs(engine.getVoicePitch(2))<1.e-6f);
+ engine.setVoicePosition(0,.19f,-.17f);
+ engine.prepare(96000.);
+ assert(std::abs(engine.getVoicePan(0)-.19f)<1.e-6f);
+ assert(std::abs(engine.getVoicePitch(0)+.17f)<1.e-6f);
+}
+
 int main(){
+ testBalancedDefaultStack();
  testSampleRateInvariantMeltFollowers();
  testThrowShortDivisionBoundary();
  testMeltSampleClearFade();

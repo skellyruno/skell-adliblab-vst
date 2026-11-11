@@ -12,8 +12,15 @@ public:
   for(auto& v:cache){v.detune=std::numeric_limits<float>::infinity();v.pan=std::numeric_limits<float>::infinity();v.ratio=1;v.targetRatio=1;v.delay=0;}
   smoothing=(float)(1.0-std::exp(-1.0/(sr*.012)));
   cachedTrackedHz=0;wetGain=0.f;
-  if(!initialized)for(int i=0;i<8;i++){
-   pans[(size_t)i].store((i-3.5f)/4.f);offsets[(size_t)i].store((i-3.5f)/4.f);
+  // First three factory voices must straddle the centre of the map instead
+  // of all starting left/low. Do not overwrite restored positions on reprepare.
+  if(!initialized){
+   constexpr float defaultPan[8]={-.50f,.50f,0.f,-.80f,.80f,-.28f,.28f,0.f};
+   constexpr float defaultPitch[8]={-.26f,.26f,0.f,-.44f,.44f,-.12f,.12f,0.f};
+   for(int i=0;i<8;++i){
+    pans[(size_t)i].store(defaultPan[i]);
+    offsets[(size_t)i].store(defaultPitch[i]);
+   }
   }
   initialized=true;
  }

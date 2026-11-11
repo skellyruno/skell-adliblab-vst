@@ -21,13 +21,15 @@ public:
  void setPresetMenuForScreenshot(bool);
  juce::StringArray runUIInteractionTests();
 private:
- class Canvas final:public juce::Component {
+ class Canvas final:public juce::Component,private juce::Slider::Listener {
  public:
   Canvas(SkellAdlibLabProcessor&,SkellAdlibLabEditor&);
+  ~Canvas()override{width.removeListener(this);gain.removeListener(this);}
   void paint(juce::Graphics&)override;
   void reorder(int id,int displacement);
   void layoutModules();
   void refreshMeters(bool clipsChanged);
+  void sliderValueChanged(juce::Slider*)override;
   void applyTheme(int);
   void showPresetMenu(bool);
   juce::StringArray runControlChecks();
@@ -49,6 +51,7 @@ private:
   MiniKeyboard keyboard;
   PresetMenuView presetMenu;
   juce::Slider width,gain;
+  juce::Label widthReadout,gainReadout;
   juce::ToggleButton limiter,formant,velIntensity,velTail,reverse;
   juce::AudioProcessorValueTreeState::SliderAttachment widthAtt,gainAtt;
   juce::AudioProcessorValueTreeState::ButtonAttachment limiterAtt,formantAtt,velIntensityAtt,velTailAtt,reverseAtt;

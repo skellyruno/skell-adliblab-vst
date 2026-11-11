@@ -52,14 +52,13 @@ public:
   g.setColour(palette.stack.withAlpha(.88f));g.fillRoundedRectangle(69.f,58.f,180.f,2.f,1.f);
   g.setColour(palette.muted);g.setFont(Theme::mono(10));
   g.drawText("SKELL AUDIO   /   VOCAL DESIGN",72,7,270,17,juce::Justification::left);
-  const auto font=Theme::display(28.f);
-  const int wordWidth=juce::roundToInt(font.getStringWidthFloat("ADLIB"));
-  g.setFont(font);g.setColour(palette.text);
-  g.drawText("ADLIB",70,23,wordWidth+3,34,juce::Justification::left);
-  const int labX=70+wordWidth+2;
-  g.setColour(palette.stack);g.drawText("LAB",labX,23,70,34,juce::Justification::left);
+  // Explicit geometry is stable even when the headless font resolver has no
+  // glyph advance metrics (which previously made ADLIB disappear entirely).
+  g.setFont(Theme::display(28.f));g.setColour(palette.text);
+  g.drawText("ADLIB",70,23,110,34,juce::Justification::left);
+  g.setColour(palette.stack);g.drawText("LAB",155,23,76,34,juce::Justification::left);
   g.setColour(palette.muted);g.setFont(Theme::mono(9));
-  g.drawText(palette.name,juce::jmax(232,labX+75),36,76,16,juce::Justification::left);
+  g.drawText(palette.name,242,36,86,16,juce::Justification::left);
   g.setColour(palette.border.withAlpha(.85f));
   g.drawVerticalLine(347,15.f,55.f);g.drawVerticalLine(802,15.f,55.f);g.drawVerticalLine(1064,15.f,55.f);
   g.setColour(palette.muted);g.setFont(Theme::mono(10));

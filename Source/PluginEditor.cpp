@@ -19,13 +19,22 @@ SkellAdlibLabEditor::Canvas::Canvas(SkellAdlibLabProcessor&p,SkellAdlibLabEditor
  addAndMakeVisible(keyboard);keyboard.setBounds(286,666,708,79);
  for(auto*s:{&width,&gain}){
   s->setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
-  s->setTextBoxStyle(juce::Slider::TextBoxBelow,false,83,22);
+  s->setTextBoxStyle(juce::Slider::NoTextBox,false,0,0);
   s->setColour(juce::Slider::textBoxOutlineColourId,juce::Colours::transparentBlack);
   addAndMakeVisible(s);
  }
  width.textFromValueFunction=[](double d){return juce::String(juce::roundToInt(d*100.))+"%";};
  gain.textFromValueFunction=[](double d){return juce::String(juce::roundToInt(d))+"dB";};
- width.setBounds(1028,601,91,91);gain.setBounds(1132,601,91,91);
+ width.setBounds(1036,603,76,65);gain.setBounds(1140,603,76,65);
+ for(auto* label:{&widthReadout,&gainReadout}){
+  label->setJustificationType(juce::Justification::centred);
+  label->setFont(Theme::mono(11.f));
+  label->setColour(juce::Label::textColourId,palette.text);
+  addAndMakeVisible(label);
+ }
+ widthReadout.setBounds(1028,668,91,19);gainReadout.setBounds(1132,668,91,19);
+ width.addListener(this);gain.addListener(this);
+ sliderValueChanged(&width);sliderValueChanged(&gain);
  limiter.setButtonText("SOFT CLIP");formant.setButtonText("FORMANT LOCK");
  velIntensity.setButtonText("VEL > INT");velTail.setButtonText("VEL > TAIL");reverse.setButtonText("ALT REVERSE");
  for(auto*toggle:{&limiter,&formant,&velIntensity,&velTail,&reverse})addAndMakeVisible(toggle);
@@ -42,6 +51,8 @@ void SkellAdlibLabEditor::Canvas::applyTheme(int index){
  themeIndex=juce::jlimit(0,3,index);
  palette=Theme::makePalette(themeIndex);
  header.refreshTheme();chaos.refreshTheme();
+ widthReadout.setColour(juce::Label::textColourId,palette.text);
+ gainReadout.setColour(juce::Label::textColourId,palette.text);
  for(auto*module:modules)module->refreshTheme();
  for(auto*s:{&width,&gain}){
   s->setColour(juce::Slider::rotarySliderFillColourId,palette.melt);
@@ -53,6 +64,10 @@ void SkellAdlibLabEditor::Canvas::applyTheme(int index){
  }
  editor.applyLookAndFeelPalette(palette);
  bank.repaint();keyboard.repaint();presetMenu.repaint();repaint();
+}
+void SkellAdlibLabEditor::Canvas::sliderValueChanged(juce::Slider* slider){
+ if(slider==&width)widthReadout.setText(juce::String(juce::roundToInt(width.getValue()*100.))+"%",juce::dontSendNotification);
+ if(slider==&gain)gainReadout.setText(juce::String(juce::roundToInt(gain.getValue()))+"dB",juce::dontSendNotification);
 }
 void SkellAdlibLabEditor::Canvas::showPresetMenu(bool visible){
  presetMenu.setVisible(visible);
@@ -71,7 +86,7 @@ juce::StringArray SkellAdlibLabEditor::Canvas::runControlChecks(){
  header.shufflePatch();
  if(value("chaos")<.3f||value("stackSpread")<100.f||header.getPresetLabel()!="SHUFFLED PATCH")
   errors.add("Shuffle did not change real automatable parameters");
- if(oldType==value("charType")&&oldSpread==value("stackSpread")&&oldChaos==value("chaos"))
+ if(std::abs(oldType-value("charType"))<.5f&&std::abs(oldSpread-value("stackSpread"))<.01f&&std::abs(oldChaos-value("chaos"))<.0001f)
   errors.add("Shuffle left sound controls unchanged");
  header.applyPresetSelection(1);
  if(std::abs(value("chaos")-.25f)>.01f||value("stackOn")<.5f)

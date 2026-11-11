@@ -18,7 +18,7 @@ public:
   const auto note=pressed>=0?pressed:processor.getNote();const float w=(float)getWidth()/15.f;
   // Light skins must preserve the familiar white/black piano-key relationship.
   const bool light=palette.background.getPerceivedBrightness()>.6f;
-  const auto whiteKey=light?juce::Colour(0xfffbf9f1):palette.text;
+  const auto whiteKey=light?juce::Colour(0xffeee5d6):palette.text;
   const auto blackKey=light?juce::Colour(0xff242824):palette.raised;
   g.setColour(palette.surface);g.fillRoundedRectangle(getLocalBounds().toFloat(),6);
   for(int white=0;white<15;++white){

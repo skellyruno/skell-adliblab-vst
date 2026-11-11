@@ -36,7 +36,7 @@ public:
  }
 private:const Theme::Palette&palette;int moduleId;
 };
-class ModulePanel:public juce::Component {
+class ModulePanel:public juce::Component,private juce::Slider::Listener {
 public:
  using SliderAttachment=juce::AudioProcessorValueTreeState::SliderAttachment;
  using ButtonAttachment=juce::AudioProcessorValueTreeState::ButtonAttachment;
@@ -48,6 +48,7 @@ public:
    on.onClick=[this]{updateBypassVisual();};
    toggles.push_back(std::make_unique<ButtonAttachment>(p.parameters,enabled,on));
   }
+ ~ModulePanel()override{for(auto*slider:sliders)slider->removeListener(this);}
  std::function<void(int,int)>requestReorder;
  // The whole exposed header can be dragged horizontally except its buttons.
  void mouseDown(const juce::MouseEvent&e)override{
@@ -85,6 +86,7 @@ public:
   on.setColour(juce::ToggleButton::textColourId,palette.text);
   for(auto*s:sliders){s->setColour(juce::Slider::rotarySliderFillColourId,accent());s->setColour(juce::Slider::textBoxTextColourId,palette.text);}
   for(auto* l:labels)l->setColour(juce::Label::textColourId,palette.muted);
+  for(auto* v:readouts)v->setColour(juce::Label::textColourId,palette.text);
   for(auto* b:buttons){b->setColour(juce::ToggleButton::textColourId,palette.text);b->setColour(juce::ToggleButton::tickColourId,accent());}
   for(auto*c:combos)c->setColour(juce::ComboBox::outlineColourId,accent().withAlpha(.5f));
   repaint();
@@ -117,29 +119,42 @@ public:
  }
 
 protected:
+ static juce::String formatReadout(const juce::String&param,double v){
+  const auto whole=[](double n){return juce::String(juce::roundToInt(n));};
+  if(param=="throwFilterStart"||param=="throwFilterEnd")
+   return v>=1000.?whole(v/1000.)+"k":whole(v)+"Hz";
+  if(param=="stackSpread")return whole(v)+"ct";
+  if(param=="stackTime"||param=="charGlide")return whole(v)+"ms";
+  if(param=="charCrush"||param=="throwRepeats"||param=="meltRoot")return whole(v);
+  if(param=="stackFormant"||param=="charFormant"||param=="throwPitchPerRepeat")return whole(v)+"st";
+  return whole(v*100.)+"%";
+ }
  juce::Colour accent() const {return palette.accent(moduleId);}
  juce::Slider& knob(const char*id,juce::String name,int x,int y,int size=56){
   auto*s=sliders.add(new juce::Slider());
   s->setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
-  s->setTextBoxStyle(juce::Slider::TextBoxBelow,false,size+21,21);
+  s->setTextBoxStyle(juce::Slider::NoTextBox,false,0,0);
   s->setColour(juce::Slider::rotarySliderFillColourId,accent());
   s->setColour(juce::Slider::textBoxTextColourId,palette.text);
   s->setColour(juce::Slider::textBoxBackgroundColourId,juce::Colours::transparentBlack);
   s->setColour(juce::Slider::textBoxOutlineColourId,juce::Colours::transparentBlack);
   const juce::String param(id);
-  s->textFromValueFunction=[param](double v){
-   const auto whole=[](double x){return juce::String(juce::roundToInt(x));};
-   if(param=="throwFilterStart"||param=="throwFilterEnd")return v>=1000.?whole(v/1000.)+"k":whole(v)+"Hz";
-   if(param=="stackSpread")return whole(v)+"ct";
-   if(param=="stackTime"||param=="charGlide")return whole(v)+"ms";
-   if(param=="charCrush"||param=="throwRepeats"||param=="meltRoot")return whole(v);
-   if(param=="stackFormant"||param=="charFormant"||param=="throwPitchPerRepeat")return whole(v)+"st";
-   return whole(v*100.)+"%";
-  };
-  s->setBounds(x-3,y,size+6,78);
+  s->textFromValueFunction=[param](double v){return formatReadout(param,v);};
+  s->setBounds(x-3,y,size+6,60);
   if(auto*r=dynamic_cast<juce::RangedAudioParameter*>(processor.parameters.getParameter(id)))
    s->setDoubleClickReturnValue(true,r->convertFrom0to1(r->getDefaultValue()));
   addAndMakeVisible(s);slidersAtt.push_back(std::make_unique<SliderAttachment>(processor.parameters,id,*s));
+  // Dedicated value readout: SliderAttachment replaces its native text
+  // formatter, so an independent label is required for user-facing units.
+  auto* value=readouts.add(new juce::Label());
+  value->setJustificationType(juce::Justification::centred);
+  value->setFont(Theme::mono(11.f));
+  value->setColour(juce::Label::textColourId,palette.text);
+  value->setBounds(x-12,y+57,size+24,17);
+  addAndMakeVisible(value);
+  readoutParams.push_back(param);
+  value->setText(formatReadout(param,s->getValue()),juce::dontSendNotification);
+  s->addListener(this);
   auto*l=labels.add(new juce::Label());l->setText(name,juce::dontSendNotification);
   l->setJustificationType(juce::Justification::centred);l->setFont(Theme::mono(10));
   l->setColour(juce::Label::textColourId,palette.muted);l->setBounds(x-12,y+74,size+24,22);addAndMakeVisible(l);
@@ -157,9 +172,16 @@ protected:
  }
  SkellAdlibLabProcessor&processor;const Theme::Palette&palette;int moduleId;juce::String title;
 private:
+ void sliderValueChanged(juce::Slider* changed)override{
+  for(int i=0;i<sliders.size();++i)if(sliders[i]==changed){
+   readouts[i]->setText(formatReadout(readoutParams[(size_t)i],changed->getValue()),juce::dontSendNotification);
+   return;
+  }
+ }
  DragGrip grip;ModulePowerButton on;int lastEnabled=-1;
  bool dragging=false;int dragStart=0,dragOffset=0;
- juce::OwnedArray<juce::Slider>sliders;juce::OwnedArray<juce::Label>labels;
+ juce::OwnedArray<juce::Slider>sliders;juce::OwnedArray<juce::Label>labels,readouts;
+ std::vector<juce::String> readoutParams;
  juce::OwnedArray<juce::ToggleButton>buttons;juce::OwnedArray<juce::ComboBox>combos;
  std::vector<std::unique_ptr<SliderAttachment>>slidersAtt;
  std::vector<std::unique_ptr<ButtonAttachment>>toggles;

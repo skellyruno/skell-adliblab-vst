@@ -15,19 +15,58 @@ public:
  void mouseUp(const juce::MouseEvent&e)override{int delta=e.getScreenX()-start;if(std::abs(delta)>45&&onDrop)onDrop(delta);}
 private:int start=0;const Theme::Palette&palette;
 };
+// Retains ToggleButton/APVTS behavior, but renders a clean power symbol.
+class ModulePowerButton final:public juce::ToggleButton {
+public:
+ ModulePowerButton(const Theme::Palette& pal,int id):palette(pal),moduleId(id){setTooltip("Turn effect on or off");}
+ void paintButton(juce::Graphics&g,bool hover,bool down)override{
+  auto r=getLocalBounds().toFloat().reduced(1.f);
+  auto accent=palette.accent(moduleId);
+  g.setColour(palette.raised.brighter(hover?.12f:0.f));g.fillRoundedRectangle(r,7.f);
+  g.setColour(hover?accent:palette.border);g.drawRoundedRectangle(r,7.f,1.f);
+  auto m=r.getCentre();g.setColour(getToggleState()?accent:palette.muted);
+  juce::Path arc;
+  for(int i=0;i<=32;++i){
+   float a=-2.4f+i*4.8f/32.f,x=m.x+6.f*std::sin(a),y=m.y-6.f*std::cos(a);
+   if(i==0)arc.startNewSubPath(x,y);else arc.lineTo(x,y);
+  }
+  g.strokePath(arc,juce::PathStrokeType(2.f));
+  g.drawLine(m.x,m.y-8.f,m.x,m.y-1.f,2.f);
+  if(down){g.setColour(accent.withAlpha(.15f));g.fillEllipse(m.x-9.f,m.y-9.f,18.f,18.f);}
+ }
+private:const Theme::Palette&palette;int moduleId;
+};
 class ModulePanel:public juce::Component {
 public:
  using SliderAttachment=juce::AudioProcessorValueTreeState::SliderAttachment;
  using ButtonAttachment=juce::AudioProcessorValueTreeState::ButtonAttachment;
  using ComboAttachment=juce::AudioProcessorValueTreeState::ComboBoxAttachment;
  ModulePanel(SkellAdlibLabProcessor&p,const Theme::Palette&pal,int id,juce::String name,const char*enabled)
-  :processor(p),palette(pal),moduleId(id),title(std::move(name)),grip(palette){
+  :processor(p),palette(pal),moduleId(id),title(std::move(name)),grip(palette),on(palette,id){
    grip.onDrop=[this](int x){if(requestReorder)requestReorder(moduleId,x);};addAndMakeVisible(grip);grip.setBounds(249,11,29,26);
-   on.setButtonText("");addAndMakeVisible(on);on.setBounds(211,15,22,22);
+   on.setButtonText("");addAndMakeVisible(on);on.setBounds(209,11,29,29);
    on.onClick=[this]{updateBypassVisual();};
    toggles.push_back(std::make_unique<ButtonAttachment>(p.parameters,enabled,on));
   }
  std::function<void(int,int)>requestReorder;
+ // The whole exposed header can be dragged horizontally except its buttons.
+ void mouseDown(const juce::MouseEvent&e)override{
+  if(e.mods.isPopupMenu()||e.position.y>53.f)return;
+  dragStart=e.getScreenX();dragging=true;repaint();
+ }
+ void mouseDrag(const juce::MouseEvent&e)override{
+  if(dragging){dragOffset=e.getScreenX()-dragStart;repaint();}
+ }
+ void mouseUp(const juce::MouseEvent&e)override{
+  if(!dragging)return;
+  int delta=e.getScreenX()-dragStart;dragging=false;dragOffset=0;repaint();
+  if(std::abs(delta)>=36&&requestReorder)requestReorder(moduleId,delta);
+ }
+ void mouseMove(const juce::MouseEvent&e)override{
+  setMouseCursor(e.position.y<=53.f?juce::MouseCursor::DraggingHandCursor:juce::MouseCursor::NormalCursor);
+ }
+ void mouseExit(const juce::MouseEvent&)override{if(!dragging)setMouseCursor(juce::MouseCursor::NormalCursor);}
+
  // Keep module bypass visible under both mouse input and host automation.
  // The processor's APVTS attachment owns the actual enable state.
  void updateBypassVisual(){
@@ -59,6 +98,7 @@ public:
   g.setGradientFill(juce::ColourGradient(accent().withAlpha(.15f),r.getTopLeft(),
                                         accent().withAlpha(.055f),juce::Point<float>(r.getRight(),53.f),false));
   g.fillRoundedRectangle(r.withHeight(52.f),10.f);
+  if(dragging){g.setColour(accent().withAlpha(.20f));g.fillRoundedRectangle(r.withHeight(52.f),10.f);}
   g.setColour(palette.border.withAlpha(.62f));g.drawHorizontalLine(53,4.f,286.f);
   g.setColour(accent());g.fillRoundedRectangle(2.f,4.f,3.f,46.f,1.3f);
   g.fillRoundedRectangle(18.f,52.f,35.f,2.f,1.f);
@@ -70,10 +110,10 @@ public:
   }else{
    g.setColour(palette.background.withAlpha(.14f));g.fillRoundedRectangle(1.f,54.f,288.f,399.f,9.f);
    g.setColour(palette.muted);g.setFont(Theme::mono(10));
-   g.drawText("BYPASS",115,17,84,18,juce::Justification::right);
+   g.drawText("OFF",157,17,43,18,juce::Justification::right);
   }
   g.setColour(palette.muted);g.setFont(Theme::mono(9));
-  g.drawText("MOVE",237,38,45,12,juce::Justification::centred);
+  g.drawText(dragging?"MOVING":"DRAG",237,38,45,12,juce::Justification::centred);
  }
 
 protected:
@@ -88,12 +128,13 @@ protected:
   s->setColour(juce::Slider::textBoxOutlineColourId,juce::Colours::transparentBlack);
   const juce::String param(id);
   s->textFromValueFunction=[param](double v){
-   if(param=="throwFilterStart"||param=="throwFilterEnd")return v>=1000.0?juce::String(v/1000.,1)+"k":juce::String((int)std::round(v))+"Hz";
-   if(param=="stackSpread")return juce::String((int)std::round(v))+"ct";
-   if(param=="stackTime"||param=="charGlide")return juce::String(v,0)+"ms";
-   if(param=="charCrush"||param=="throwRepeats"||param=="meltRoot")return juce::String((int)std::round(v));
-   if(param=="stackFormant"||param=="charFormant"||param=="throwPitchPerRepeat")return juce::String(v,1)+"st";
-   return juce::String(v,2);
+   const auto whole=[](double x){return juce::String(juce::roundToInt(x));};
+   if(param=="throwFilterStart"||param=="throwFilterEnd")return v>=1000.?whole(v/1000.)+"k":whole(v)+"Hz";
+   if(param=="stackSpread")return whole(v)+"ct";
+   if(param=="stackTime"||param=="charGlide")return whole(v)+"ms";
+   if(param=="charCrush"||param=="throwRepeats"||param=="meltRoot")return whole(v);
+   if(param=="stackFormant"||param=="charFormant"||param=="throwPitchPerRepeat")return whole(v)+"st";
+   return whole(v*100.)+"%";
   };
   s->setBounds(x-3,y,size+6,78);
   if(auto*r=dynamic_cast<juce::RangedAudioParameter*>(processor.parameters.getParameter(id)))
@@ -116,7 +157,8 @@ protected:
  }
  SkellAdlibLabProcessor&processor;const Theme::Palette&palette;int moduleId;juce::String title;
 private:
- DragGrip grip;juce::ToggleButton on;int lastEnabled=-1;
+ DragGrip grip;ModulePowerButton on;int lastEnabled=-1;
+ bool dragging=false;int dragStart=0,dragOffset=0;
  juce::OwnedArray<juce::Slider>sliders;juce::OwnedArray<juce::Label>labels;
  juce::OwnedArray<juce::ToggleButton>buttons;juce::OwnedArray<juce::ComboBox>combos;
  std::vector<std::unique_ptr<SliderAttachment>>slidersAtt;

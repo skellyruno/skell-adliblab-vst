@@ -16,7 +16,7 @@ inline Palette makePalette(int index){
  switch(index){
   case 1: return {juce::Colour(0xff070d0a),juce::Colour(0xff101913),juce::Colour(0xff111b17),juce::Colour(0xff1c2a20),juce::Colour(0xffe4fce8),juce::Colour(0xff8baa98),juce::Colour(0xff365340),
                    juce::Colour(0xff80f52f),juce::Colour(0xff22d789),juce::Colour(0xff6cdec8),juce::Colour(0xffc8ff63),juce::Colour(0xffffb34d),"NEON"};
-  case 2: return {juce::Colour(0xffeee9db),juce::Colour(0xfffbf7eb),juce::Colour(0xfff7f2e7),juce::Colour(0xffe8e0d1),juce::Colour(0xff232923),juce::Colour(0xff687064),juce::Colour(0xffccc2b1),
+  case 2: return {juce::Colour(0xffd4cdbc),juce::Colour(0xffe6dece),juce::Colour(0xffddd4c4),juce::Colour(0xffc9bdab),juce::Colour(0xff252823),juce::Colour(0xff586057),juce::Colour(0xffaea48e),
                    juce::Colour(0xff6a7450),juce::Colour(0xffa26765),juce::Colour(0xff4c8391),juce::Colour(0xff727f37),juce::Colour(0xffbb753a),"IVORY"};
   case 3: return {juce::Colour(0xff10090d),juce::Colour(0xff1b1117),juce::Colour(0xff1c121a),juce::Colour(0xff2b1c23),juce::Colour(0xfff9e8e8),juce::Colour(0xffb69aa4),juce::Colour(0xff5b3241),
                    juce::Colour(0xffe94c70),juce::Colour(0xffff738f),juce::Colour(0xffff947c),juce::Colour(0xfff9c69e),juce::Colour(0xffff6949),"CRIMSON"};

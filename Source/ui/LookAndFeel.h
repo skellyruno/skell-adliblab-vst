@@ -18,10 +18,18 @@ public:
   setColour(juce::PopupMenu::backgroundColourId,p.surface);
   setColour(juce::PopupMenu::textColourId,p.text);
   setColour(juce::PopupMenu::highlightedBackgroundColourId,p.raised);
+  setColour(juce::PopupMenu::highlightedTextColourId,p.text);
   setColour(juce::Label::textColourId,p.text);
   setColour(juce::ToggleButton::textColourId,p.text);
   setColour(juce::TooltipWindow::backgroundColourId,p.surface);
   setColour(juce::TooltipWindow::textColourId,p.text);
+ }
+ juce::Font getPopupMenuFont()override{return Theme::display(13.f);}
+ void drawPopupMenuBackground(juce::Graphics&g,int width,int height)override{
+  auto r=juce::Rectangle<float>(0.f,0.f,(float)width,(float)height);
+  g.setGradientFill(juce::ColourGradient(palette.surface.brighter(.035f),r.getTopLeft(),palette.panel,r.getBottomRight(),false));
+  g.fillRect(r);g.setColour(palette.border);g.drawRect(r,1.f);
+  g.setColour(palette.stack.withAlpha(.75f));g.fillRect(0.f,0.f,3.f,(float)height);
  }
  void drawButtonBackground(juce::Graphics&g,juce::Button&button,const juce::Colour&,bool hover,bool down)override{
   const auto r=button.getLocalBounds().toFloat().reduced(1.f);

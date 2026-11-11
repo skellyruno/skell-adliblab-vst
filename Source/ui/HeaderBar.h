@@ -40,6 +40,7 @@ public:
  std::function<void()> onThemeCycle;
  std::function<void(int)> onThemeSelect;
  std::function<void()> onPresetClicked;
+ std::function<void()> onShowTutorial;
  void refreshPresetLabel(){preset.setButtonText(processor.parameters.state.getProperty("presetName","INIT PATCH").toString());}
  juce::String getPresetLabel()const{return preset.getButtonText();}
  void refreshTheme(){setup(mix,palette.stack);setup(output,palette.melt);skull.repaint();repaint();}

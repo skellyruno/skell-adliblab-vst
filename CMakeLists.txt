@@ -13,7 +13,7 @@ endif()
 # the SAME immutable SkellCore checkout. The older bundled SkellCore copy is
 # intentionally not added to the build.
 option(SKELL_ADLIBLAB_BUILD_UI_RENDERER "Build real JUCE editor screenshots" OFF)
-set(SKELL_ADLIBLAB_SKELLCORE_REV "c063c28333013f541d950292d4508c442787e446"
+set(SKELL_ADLIBLAB_SKELLCORE_REV "b0c79ff75cf7f1ca7e55ad231a9a9013f7c9e6c3"
     CACHE STRING "Tested immutable SkellCore revision")
 FetchContent_Declare(SkellCoreDependency
   GIT_REPOSITORY https://github.com/skellyruno/skellcore-vst-template.git

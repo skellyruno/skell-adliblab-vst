@@ -1,6 +1,6 @@
 # AdlibLab v0.9.3 — unified SkellCore and stable visual meters
 
-- Use pinned SkellCore commit c063c28333013f541d950292d4508c442787e446 for **all builds** including released Windows VST3 and Linux UI renderer.
+- Use pinned SkellCore commit b0c79ff75cf7f1ca7e55ad231a9a9013f7c9e6c3 for **all builds** including released Windows VST3 and Linux UI renderer.
 - Stop including stale bundled v0.3 and duplicated old separate guided-tour header checkout; preserve old folder only as source provenance.
 - Link SkellCore::DSP and SkellCore::UI into the real plugin, SkellCore::UIRenderer into the separate development executable.
 - Real processor now uses SkellCore HostTempoClock for finite host BPM handling and sample-based advancement. SkellWorld local tuning and guided tour remain intact.

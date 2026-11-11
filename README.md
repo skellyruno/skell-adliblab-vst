@@ -151,7 +151,7 @@ VST3/parameter IDs, styles and sound-processing code are preserved.
 
 The released VST3, guided tour, optional SkellWorld connection, and headless JUCE
 UI renderer now use **one immutable pinned SkellCore commit**
-(`c063c28333013f541d950292d4508c442787e446`) from
+(`b0c79ff75cf7f1ca7e55ad231a9a9013f7c9e6c3`) from
 [skellcore-vst-template](https://github.com/skellyruno/skellcore-vst-template).
 The legacy bundled `SkellCore/` folder is retained for provenance but is **not
 included in the build**. This avoids loading two mismatched copies of its headers.

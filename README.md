@@ -131,3 +131,17 @@ desktop windows, outside the AudioProcessorEditor's component snapshot, so
 the current harness does not yet capture those popup pixels or mouse-hover
 states. Those need a desktop-window-grab/input test, not a fake screenshot.
 Windows VST3 is the only release target.
+
+## Hub-free SkellKey integration (Windows)
+
+AdlibLab now automatically receives SkellKey's confirmed Key and Major/Minor
+Scale when the user clicks **SEND TO TUNE** in SkellKey. No Hub, Python, extra
+app, internet or extra button is needed. Its existing `stackKey` and
+`stackScale` host parameters update on the JUCE message thread; the
+`stackScaleLock` toggle stays under the user's control, so this does not
+silently enable a new effect. The A4 value is received for future
+reference-aware modules, but the present AdlibLab DSP is unchanged.
+SkellCore's Windows same-session shared-memory bus holds only the freshest
+valid tuning packet and expires crashed senders after five seconds. Existing
+VST3/parameter IDs, styles and sound-processing code are preserved.
+

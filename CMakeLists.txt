@@ -75,6 +75,7 @@ endif()
 if(SKELL_ADLIBLAB_BUILD_UI_RENDERER)
   add_executable(SkellAdlibLabUIRenderer tests/ui_renderer.cpp)
   target_include_directories(SkellAdlibLabUIRenderer PRIVATE
+    "${skellguidedtourheaders_SOURCE_DIR}/SkellCore/include"
     "${CMAKE_CURRENT_BINARY_DIR}/SkellAdlibLab_artefacts/JuceLibraryCode")
   target_compile_features(SkellAdlibLabUIRenderer PRIVATE cxx_std_17)
   target_compile_definitions(SkellAdlibLabUIRenderer PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)

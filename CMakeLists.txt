@@ -30,7 +30,7 @@ endif()
 # Preserve bundled DSP/UI targets and fetch only the tested shared tour header.
 FetchContent_Declare(SkellGuidedTourHeaders
   GIT_REPOSITORY https://github.com/skellyruno/skell-vst-template.git
-  GIT_TAG 80aae7ebbcf9f25c3fd2661dfac51e5601243ae8
+  GIT_TAG 4c499c58cb3b2791eed2d5dcef6d8d543fcaea8d
   GIT_SHALLOW FALSE
   SOURCE_SUBDIR _guided_tour_headers_only)
 FetchContent_MakeAvailable(SkellGuidedTourHeaders)

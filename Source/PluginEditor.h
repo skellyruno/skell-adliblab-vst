@@ -11,6 +11,7 @@
 #include "ui/ChaosKnob.h"
 #include "ui/HeaderBar.h"
 #include "ui/PresetMenuView.h"
+#include <SkellCore/GuidedTour.h>
 class SkellAdlibLabEditor final:public juce::AudioProcessorEditor,private juce::Timer {
 public:
  explicit SkellAdlibLabEditor(SkellAdlibLabProcessor&);
@@ -20,6 +21,8 @@ public:
  void applyLookAndFeelPalette(const Theme::Palette&);
  void setPresetMenuForScreenshot(bool);
  juce::StringArray runUIInteractionTests();
+ bool showGuidedTourForScreenshot();
+ void dismissGuidedTourForScreenshot();
 private:
  class Canvas final:public juce::Component,private juce::Slider::Listener {
  public:
@@ -33,6 +36,8 @@ private:
   void applyTheme(int);
   void showPresetMenu(bool);
   juce::StringArray runControlChecks();
+  std::vector<skellcore::ui::GuidedTourStep> tourSteps();
+  skellcore::ui::GuidedTourPalette tourPalette()const;
   int getThemeIndex()const{return themeIndex;}
   const Theme::Palette&getPalette()const{return palette;}
  private:
@@ -60,6 +65,8 @@ private:
  void timerCallback()override;
  SkellAdlibLabProcessor&processor;
  LabLookAndFeel lookAndFeel;
+ std::unique_ptr<skellcore::ui::GuidedTourController> guidedTour;
+ void showGuidedTour(bool firstRun);
  juce::TooltipWindow tooltips{this,700};
  JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SkellAdlibLabEditor)
 };

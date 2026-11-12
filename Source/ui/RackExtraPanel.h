@@ -36,10 +36,14 @@ public:
    g.drawVerticalLine((int)x,149.f,214.f);
   }
   g.drawHorizontalLine(184,34.f,252.f);
-  const float x0=34.f,y0=149.f,width=218.f,height=65.f;
+  const float x0=34.f,y0=149.f,height=65.f;
   juce::Path shape;
+  bool firstPoint=true;
   auto append=[&](float x,float y){
-   if(shape.isEmpty())shape.startNewSubPath(x,y);else shape.lineTo(x,y);
+   // JUCE Path::isEmpty() remains true for a move-only path. Track the
+   // first vertex explicitly or the preview becomes 218 disconnected moves.
+   if(firstPoint){shape.startNewSubPath(x,y);firstPoint=false;}
+   else shape.lineTo(x,y);
   };
   if(active==adlib::RackType::Chop){
    const int pulses=2+(int)std::floor(rate*5.99f);

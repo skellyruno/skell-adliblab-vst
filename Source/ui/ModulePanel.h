@@ -107,8 +107,11 @@ public:
   repaint();
  }
  void mouseDrag(const juce::MouseEvent&e)override{
-  if(dragging){dragOffset=e.getScreenX()-dragStart;
-   if(requestPreview)requestPreview(moduleId,dragOffset,true);repaint();}
+  if(dragging){
+   dragOffset=e.getScreenX()-dragStart;
+   if(requestPreview)requestPreview(moduleId,dragOffset,true);
+   repaint();
+  }
  }
  void mouseUp(const juce::MouseEvent&e)override{
   if(!dragging)return;

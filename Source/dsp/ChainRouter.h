@@ -37,7 +37,7 @@ public:
    const float step=(float)(1.0/(sampleRate*.012));
    const float change=juce::jlimit(-step,step,target-slotBlend[index]);
    slotBlend[index]=juce::jlimit(0.f,1.f,slotBlend[index]+change);
-   if(target==0.f&&slotBlend[index]<=0.f)continue;
+   if(!p.rackOn[index]&&slotBlend[index]<=0.f)continue;
    const Stereo drySlot=s;
    switch(types[index]){
     case RackType::Stack:s=stack.tick(s,mod,chaos,e.trackedHz);break;

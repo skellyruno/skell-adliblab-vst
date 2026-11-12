@@ -8,6 +8,8 @@ SkellAdlibLabEditor::Canvas::Canvas(SkellAdlibLabProcessor&p,SkellAdlibLabEditor
  velIntensityAtt(p.parameters,"kbVelIntensity",velIntensity),velTailAtt(p.parameters,"kbVelTail",velTail),reverseAtt(p.parameters,"kbAltReverse",reverse),
  modules{{&stack,&character,&throwPanel,&melt}} {
  setSize(Theme::designWidth,Theme::designHeight);
+ setWantsKeyboardFocus(true);
+ setMouseClickGrabsKeyboardFocus(true);
  addAndMakeVisible(header);header.setBounds(15,8,1250,65);
  header.onThemeCycle=[this]{int next=(themeIndex+1)%4;processor.setThemeIndex(next);applyTheme(next);};
  header.onThemeSelect=[this](int next){processor.setThemeIndex(next);applyTheme(next);};
@@ -191,6 +193,7 @@ void SkellAdlibLabEditor::Canvas::paint(juce::Graphics&g){
 }
 void SkellAdlibLabEditor::Canvas::layoutModules(){
  const auto order=processor.getModuleOrder();const auto types=processor.getRackTypes();
+ displayedOrder=order;displayedTypes=types;
  constexpr int positions[]={30,342,654,966};
  for(auto*panel:modules)panel->setVisible(false);
  for(auto&panel:extraPanels)panel->setVisible(false);
@@ -212,6 +215,10 @@ void SkellAdlibLabEditor::Canvas::layoutModules(){
   if(panel){panel->setBounds(positions[i],90,290,455);panel->setVisible(true);}
  }
  repaint(20,82,1240,470);
+}
+void SkellAdlibLabEditor::Canvas::ensureRackLayoutCurrent(){
+ if(displayedOrder!=processor.getModuleOrder()||displayedTypes!=processor.getRackTypes())
+  layoutModules();
 }
 void SkellAdlibLabEditor::Canvas::paintOverChildren(juce::Graphics&g){
  if(draggingSlot<0)return;
@@ -248,6 +255,8 @@ void SkellAdlibLabEditor::Canvas::refreshMeters(bool clipsChanged){
 SkellAdlibLabEditor::SkellAdlibLabEditor(SkellAdlibLabProcessor&p)
  :AudioProcessorEditor(&p),canvas(p,*this),processor(p){
  setResizable(true,true);
+ setWantsKeyboardFocus(true);
+ setMouseClickGrabsKeyboardFocus(true);
  getConstrainer()->setFixedAspectRatio((double)Theme::designWidth/Theme::designHeight);
  setResizeLimits(800,500,1920,1200);
  applyLookAndFeelPalette(canvas.getPalette());
@@ -260,6 +269,7 @@ SkellAdlibLabEditor::SkellAdlibLabEditor(SkellAdlibLabProcessor&p)
  showGuidedTour(true);
 }
 SkellAdlibLabEditor::~SkellAdlibLabEditor(){
+ releaseComputerNotes();
  stopTimer();guidedTour.reset();canvas.setLookAndFeel(nullptr);
 }
 void SkellAdlibLabEditor::showGuidedTour(bool firstRun){
@@ -283,8 +293,57 @@ juce::StringArray SkellAdlibLabEditor::runUIInteractionTests(){return canvas.run
 void SkellAdlibLabEditor::timerCallback(){
  const bool clipChanged=processor.collectRecordedClip();
  if(canvas.getThemeIndex()!=processor.getThemeIndex())canvas.applyTheme(processor.getThemeIndex());
+ canvas.ensureRackLayoutCurrent();
  canvas.refreshMeters(clipChanged);
 }
+// FL Studio must give the plugin keyboard focus. Controls and popup editors
+// keep priority; unhandled QWERTY keys map onto the actual MIDI clip engine.
+bool SkellAdlibLabEditor::keyPressed(const juce::KeyPress& key){
+ const auto* focus=juce::Component::getCurrentlyFocusedComponent();
+ if(dynamic_cast<const juce::TextEditor*>(focus)!=nullptr ||
+    dynamic_cast<const juce::ComboBox*>(focus)!=nullptr) return false;
+ const auto c=juce::CharacterFunctions::toLowerCase(key.getTextCharacter());
+ if(c=='['||c==']'){
+  releaseComputerNotes();
+  keyboardOctave=juce::jlimit(-1,2,keyboardOctave+(c==']'?1:-1));
+  return true;
+ }
+ // 12 chromatic notes on Z-M and 12 more on Q-U.
+ static const juce::String keys("zsxdcvgbhnjmq2w3er5t6y7u");
+ const int index=keys.indexOfChar(c);
+ if(index<0||index>=(int)computerHeld.size())return false;
+ if(!computerHeld[(size_t)index]){
+  const int note=48+index+keyboardOctave*12;
+  if(juce::isPositiveAndBelow(note,128)){
+   computerHeld[(size_t)index]=true;
+   processor.requestMidiOn(note);
+  }
+ }
+ return true;
+}
+bool SkellAdlibLabEditor::keyStateChanged(bool){
+ static const juce::String keys("zsxdcvgbhnjmq2w3er5t6y7u");
+ bool released=false;
+ for(int i=0;i<(int)computerHeld.size();++i){
+  if(!computerHeld[(size_t)i])continue;
+  const int lower=(int)keys[i];
+  const int upper=(int)juce::CharacterFunctions::toUpperCase(keys[i]);
+  if(juce::KeyPress::isKeyCurrentlyDown(lower)||juce::KeyPress::isKeyCurrentlyDown(upper))
+   continue;
+  computerHeld[(size_t)i]=false;
+  processor.requestMidiOff(48+i+keyboardOctave*12);
+  released=true;
+ }
+ return released;
+}
+void SkellAdlibLabEditor::releaseComputerNotes(){
+ for(int i=0;i<(int)computerHeld.size();++i){
+  if(!computerHeld[(size_t)i])continue;
+  computerHeld[(size_t)i]=false;
+  processor.requestMidiOff(48+i+keyboardOctave*12);
+ }
+}
+void SkellAdlibLabEditor::focusLost(FocusChangeType){releaseComputerNotes();}
 void SkellAdlibLabEditor::paint(juce::Graphics&g){g.fillAll(canvas.getPalette().background);}
 void SkellAdlibLabEditor::resized(){
  float s=juce::jmin(getWidth()/1280.f,getHeight()/800.f);

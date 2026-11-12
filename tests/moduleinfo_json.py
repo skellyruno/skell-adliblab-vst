@@ -5,7 +5,7 @@ import tempfile
 from pathlib import Path
 import sys
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "packaging"))
 from normalize_moduleinfo import remove_trailing_commas, normalize
 
 bad = '{"Version":"0.10.2", "Test": [1,2,], "Nested": {"label":"comma, ] inside a string",},}'

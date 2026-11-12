@@ -33,7 +33,7 @@ inline Stereo operator*(Stereo a,float v) { return {a.l*v,a.r*v}; }
 struct Events { bool hit=false, wordEnd=false, syllableEnd=false; float envelope=0; float trackedHz=0; };
 struct Params {
  float mix=0.65f, outputGain=0, width=1, chaos=0, bpm=120;
- bool chaosLock=false, safetyLimiter=true;
+ bool chaosLock=false, safetyLimiter=true, globalOn=true;
  int latencyMode=0;
  bool stackOn=true; int stackVoices=3; float stackSpread=30, stackFormant=0, stackTime=22,stackWidth=0.75f,stackChaosAmt=0.45f;
  bool stackRerollOnHit=true,stackScaleLock=false; int stackKey=0,stackScale=0;

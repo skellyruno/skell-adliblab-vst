@@ -19,9 +19,14 @@ jobs:
         run: python tests/verify_project.py
       - name: Check responsive UI geometry contract
         run: python tests/ui_layout.py
+      - uses: actions/checkout@v5
+        with:
+          repository: skellyruno/skellcore-vst-template
+          ref: cf2d182a1c4b1b45f97253f5e1b17dd91343aeaa
+          path: skellcore-test-dependency
       - name: Run DSP regression smoke under ASan/UBSan
         run: |
-          g++ -std=c++17 -O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined -pthread -Itests/stubs tests/dsp_smoke.cpp -o dsp-smoke
+          g++ -std=c++17 -O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined -pthread -Itests/stubs -Iskellcore-test-dependency/SkellCore/include tests/dsp_smoke.cpp -o dsp-smoke
           ./dsp-smoke
       - name: Verify peak-meter timing and finite input across sample rates
         run: |
@@ -33,11 +38,11 @@ jobs:
           ./rack-state
       - name: Check silent-tail denormals without host FTZ
         run: |
-          g++ -std=c++17 -O2 -Itests/stubs tests/denorm_probe.cpp -o denorm-probe
+          g++ -std=c++17 -O2 -Itests/stubs -Iskellcore-test-dependency/SkellCore/include tests/denorm_probe.cpp -o denorm-probe
           ./denorm-probe
       - name: Check real-time allocations and profile worst-case DSP CPU
         run: |
-          g++ -std=c++17 -O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined -Itests/stubs tests/realtime_alloc.cpp -o realtime-alloc
+          g++ -std=c++17 -O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined -Itests/stubs -Iskellcore-test-dependency/SkellCore/include tests/realtime_alloc.cpp -o realtime-alloc
           ./realtime-alloc
 
   build-windows:

@@ -162,6 +162,20 @@ juce::StringArray SkellAdlibLabEditor::Canvas::runControlChecks(){
   errors.add("Shuffle did not change real automatable parameters");
  if(std::abs(oldType-value("charType"))<.5f&&std::abs(oldSpread-value("stackSpread"))<.01f&&std::abs(oldChaos-value("chaos"))<.0001f)
   errors.add("Shuffle left sound controls unchanged");
+ const auto shuffledTypes=processor.getRackTypes(),shuffledOrder=processor.getModuleOrder();
+ header.undoLastShuffle();
+ if((int)value("charType")!=1||header.getPresetLabel()!="ROBOT INCOMING")
+  errors.add("Undo Shuffle did not recover previous patch");
+ if(shuffledTypes==processor.getRackTypes()&&shuffledOrder==processor.getModuleOrder())
+  errors.add("Shuffle did not change rack types or order");
+ header.applyPresetSelection(7);
+ if(processor.getRackTypes()[2]!=adlib::RackType::Chop ||
+    processor.getRackTypes()[3]!=adlib::RackType::Filter)
+  errors.add("Bone Chop preset failed to populate rack");
+ processor.setRackType(3,adlib::RackType::Empty);layoutModules();
+ if(!emptySlots[3]->isVisible())errors.add("Removed effect did not show + tile");
+ processor.setRackType(3,adlib::RackType::Motion);layoutModules();
+ if(!extraPanels[3]->isVisible())errors.add("Added effect not visible in slot");
  header.applyPresetSelection(1);
  if(std::abs(value("chaos")-.25f)>.01f||value("stackOn")<.5f)
   errors.add("Init Patch failed to restore defaults");

@@ -76,9 +76,9 @@ public:
 
  // Used by both the real dropdown and the JUCE renderer interaction tests.
  void applyPresetSelection(int result){
-  if(result==10){savePreset();return;}
-  if(result==11){loadPreset();return;}
-  if(result<1||result>6)return;
+  if(result==20){savePreset();return;}
+  if(result==21){loadPreset();return;}
+  if(result<1||result>10)return;
   resetFactoryPatch();
   juce::String name="INIT PATCH";
   switch(result){
@@ -104,12 +104,50 @@ public:
     parameter("charGlide",20);parameter("charDetune",.32f);
     parameter("throwMode",1);parameter("throwDiv",2);parameter("throwFeedback",.34f);
     parameter("mix",.9f);break;
+   case 7: name="BONE CHOP";
+    processor.setRackTypes({adlib::RackType::Stack,adlib::RackType::Throw,
+       adlib::RackType::Chop,adlib::RackType::Filter});
+    parameter("slot2Amount",.94f);parameter("slot2Rate",.79f);parameter("slot2Tone",.77f);
+    parameter("slot3Tone",.29f);parameter("slot3Amount",.68f);
+    parameter("mix",.88f);break;
+   case 8: name="NEON MOTION";
+    processor.setRackTypes({adlib::RackType::Stack,adlib::RackType::Motion,
+       adlib::RackType::Throw,adlib::RackType::Saturate});
+    parameter("slot1Amount",.72f);parameter("slot1Rate",.39f);
+    parameter("slot3Amount",.28f);parameter("slot3Tone",.74f);
+    parameter("mix",.9f);break;
+   case 9: name="CRUSHED RADIO";
+    processor.setRackTypes({adlib::RackType::Filter,adlib::RackType::Character,
+       adlib::RackType::Throw,adlib::RackType::Saturate});
+    parameter("slot0Amount",.9f);parameter("slot0Tone",.24f);
+    parameter("slot3Amount",.82f);parameter("charType",1);parameter("charIntensity",.66f);
+    parameter("mix",.95f);break;
+   case 10: name="STUTTER GHOST";
+    processor.setRackTypes({adlib::RackType::Chop,adlib::RackType::Motion,
+       adlib::RackType::Throw,adlib::RackType::Filter});
+    parameter("slot0Rate",.98f);parameter("slot0Tone",.7f);
+    parameter("slot1Amount",.31f);parameter("slot1Rate",.29f);
+    parameter("throwFeedback",.72f);parameter("throwRepeats",7);
+    parameter("mix",.96f);break;
   }
   processor.parameters.state.setProperty("presetName",name,nullptr);
   preset.setButtonText(name);
  }
  void shufflePatch(){
+  // Message thread only. Undo restores rack types, order and APVTS state.
+  processor.getStateInformation(undoShuffleSnapshot);
   auto& random=juce::Random::getSystemRandom();
+  std::array<adlib::RackType,7> library{{adlib::RackType::Stack,
+    adlib::RackType::Character,adlib::RackType::Throw,adlib::RackType::Chop,
+    adlib::RackType::Motion,adlib::RackType::Filter,adlib::RackType::Saturate}};
+  for(int i=6;i>0;--i)std::swap(library[(size_t)i],library[(size_t)random.nextInt(i+1)]);
+  adlib::RackTypes next{{library[0],library[1],library[2],library[3]}};
+  if(next==processor.getRackTypes())std::swap(next[0],next[1]);
+  processor.setRackTypes(next);
+  std::array<int,4> order{{0,1,2,3}};
+  for(int i=3;i>0;--i)std::swap(order[(size_t)i],order[(size_t)random.nextInt(i+1)]);
+  if(order==processor.getModuleOrder())std::swap(order[0],order[1]);
+  processor.setModuleOrder(order);
   parameter("stackOn",1);parameter("charOn",1);parameter("throwOn",1);
   parameter("stackVoices",(float)random.nextInt(7));
   parameter("stackSpread",110.f+random.nextFloat()*780.f);
@@ -120,14 +158,28 @@ public:
   parameter("charIntensity",.45f+random.nextFloat()*.5f);
   parameter("charCrush",(float)(4+random.nextInt(10)));
   parameter("charDetune",random.nextFloat()*.65f);
-  parameter("throwDiv",(float)random.nextInt(6));
+  parameter("throwDiv",(float)random.nextInt(7));
   parameter("throwFeedback",.25f+random.nextFloat()*.57f);
   parameter("throwRepeats",(float)(2+random.nextInt(9)));
   parameter("throwDuck",random.nextFloat()*.55f);
+  for(int i=0;i<4;++i){
+   const juce::String prefix="slot"+juce::String(i);
+   parameter((prefix+"On").toRawUTF8(),1.f);
+   parameter((prefix+"Amount").toRawUTF8(),.25f+random.nextFloat()*.73f);
+   parameter((prefix+"Rate").toRawUTF8(),random.nextFloat());
+   parameter((prefix+"Tone").toRawUTF8(),random.nextFloat());
+   parameter((prefix+"Mix").toRawUTF8(),.5f+random.nextFloat()*.5f);
+  }
   parameter("chaos",.35f+random.nextFloat()*.5f);
   processor.reRoll();
   processor.parameters.state.setProperty("presetName","SHUFFLED PATCH",nullptr);
   preset.setButtonText("SHUFFLED PATCH");
+ }
+ void undoLastShuffle(){
+  if(undoShuffleSnapshot.isEmpty())return;
+  processor.setStateInformation(undoShuffleSnapshot.getData(),(int)undoShuffleSnapshot.getSize());
+  undoShuffleSnapshot.reset();
+  refreshPresetLabel();
  }
 
 private:
@@ -146,6 +198,8 @@ private:
    }
   }
   processor.setModuleOrder({{0,1,2,3}});
+  processor.setRackTypes({adlib::RackType::Stack,adlib::RackType::Character,
+                         adlib::RackType::Throw,adlib::RackType::Chop});
  }
  void savePreset(){
   chooser=std::make_unique<juce::FileChooser>("Save AdlibLab patch",juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("AdlibLab.skad"),"*.skad");
@@ -166,16 +220,19 @@ private:
   menu.addItem(2,"MIDI keyboard routing");
   menu.addSeparator();
   menu.addItem(3,"Quality modes (not yet implemented)",false,false);
+  menu.addItem(4,"Undo last shuffle",!undoShuffleSnapshot.isEmpty());
   juce::Component::SafePointer<HeaderBar>safe(this);
   menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&settings).withMinimumWidth(255),
    [safe](int result){
     if(!safe)return;
     if(result==1)juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::InfoIcon,
       "Skell AdlibLab","Windows VST3. Quality mode selection is not connected to DSP yet.");
+    if(result==4)safe->undoLastShuffle();
     if(result==2)juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::InfoIcon,
       "MIDI routing","Route MIDI to AdlibLab in your DAW. Note keys trigger loaded clip pads; SHIFT+click a pad records the next phrase.");
    });
  }
+ juce::MemoryBlock undoShuffleSnapshot;
  SkellAdlibLabProcessor&processor;const Theme::Palette&palette;SkullThemeButton skull;GearButton settings;juce::Slider mix,output;
  juce::AudioProcessorValueTreeState::SliderAttachment mixAtt,outputAtt;
  juce::TextButton preset,shuffle;std::unique_ptr<juce::FileChooser>chooser;

@@ -4,7 +4,7 @@ SkellAdlibLabEditor::Canvas::Canvas(SkellAdlibLabProcessor&p,SkellAdlibLabEditor
  :processor(p),editor(ed),palette(Theme::makePalette(p.getThemeIndex())),themeIndex(p.getThemeIndex()),
  header(p,palette),stack(p,palette),character(p,palette),throwPanel(p,palette),melt(p,palette),
  effectPicker(palette),chaos(p,palette),bank(p,palette),keyboard(p,palette),presetMenu(palette),
- widthAtt(p.parameters,"width",width),gainAtt(p.parameters,"outputGain",gain),
+ widthAtt(p.parameters,"width",width),mixAtt(p.parameters,"mix",mix),gainAtt(p.parameters,"outputGain",gain),
  limiterAtt(p.parameters,"safetyLimiter",limiter),formantAtt(p.parameters,"kbFormantLock",formant),
  velIntensityAtt(p.parameters,"kbVelIntensity",velIntensity),velTailAtt(p.parameters,"kbVelTail",velTail),reverseAtt(p.parameters,"kbAltReverse",reverse),
  modules{{&stack,&character,&throwPanel,&melt}} {
@@ -39,24 +39,29 @@ SkellAdlibLabEditor::Canvas::Canvas(SkellAdlibLabProcessor&p,SkellAdlibLabEditor
  addAndMakeVisible(chaos);chaos.setBounds(27,567,233,214);
  addAndMakeVisible(bank);bank.setBounds(286,590,708,68);
  addAndMakeVisible(keyboard);keyboard.setBounds(286,666,708,79);
- for(auto*s:{&width,&gain}){
+ for(auto*s:{&width,&mix,&gain}){
   s->setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
   s->setTextBoxStyle(juce::Slider::NoTextBox,false,0,0);
   s->setColour(juce::Slider::textBoxOutlineColourId,juce::Colours::transparentBlack);
   addAndMakeVisible(s);
  }
  width.textFromValueFunction=[](double d){return juce::String(juce::roundToInt(d*100.))+"%";};
- gain.textFromValueFunction=[](double d){return juce::String(juce::roundToInt(d))+"dB";};
- width.setBounds(1036,603,76,65);gain.setBounds(1140,603,76,65);
- for(auto* label:{&widthReadout,&gainReadout}){
+ mix.textFromValueFunction=[](double d){return juce::String(juce::roundToInt(d*100.))+"%";};
+ gain.textFromValueFunction=[](double d){return juce::String(d,1)+"dB";};
+ width.setBounds(1035,606,56,62);
+ mix.setBounds(1109,606,56,62);
+ gain.setBounds(1183,606,56,62);
+ for(auto* label:{&widthReadout,&mixReadout,&gainReadout}){
   label->setJustificationType(juce::Justification::centred);
   label->setFont(Theme::mono(11.f));
   label->setColour(juce::Label::textColourId,palette.text);
   addAndMakeVisible(label);
  }
- widthReadout.setBounds(1028,668,91,19);gainReadout.setBounds(1132,668,91,19);
- width.addListener(this);gain.addListener(this);
- sliderValueChanged(&width);sliderValueChanged(&gain);
+ widthReadout.setBounds(1031,668,65,19);
+ mixReadout.setBounds(1105,668,65,19);
+ gainReadout.setBounds(1179,668,65,19);
+ width.addListener(this);mix.addListener(this);gain.addListener(this);
+ sliderValueChanged(&width);sliderValueChanged(&mix);sliderValueChanged(&gain);
  limiter.setButtonText("SOFT CLIP");formant.setButtonText("FORMANT LOCK");
  velIntensity.setButtonText("VEL > INT");velTail.setButtonText("VEL > TAIL");reverse.setButtonText("ALT REVERSE");
  for(auto*toggle:{&limiter,&formant,&velIntensity,&velTail,&reverse})addAndMakeVisible(toggle);
@@ -81,12 +86,13 @@ void SkellAdlibLabEditor::Canvas::applyTheme(int index){
  palette=Theme::makePalette(themeIndex);
  header.refreshTheme();chaos.refreshTheme();
  widthReadout.setColour(juce::Label::textColourId,palette.text);
+ mixReadout.setColour(juce::Label::textColourId,palette.text);
  gainReadout.setColour(juce::Label::textColourId,palette.text);
  for(auto*module:modules)module->refreshTheme();
  for(auto&panel:extraPanels)panel->refreshTheme();
  for(auto&empty:emptySlots)empty->repaint();
  effectPicker.repaint();
- for(auto*s:{&width,&gain}){
+ for(auto*s:{&width,&mix,&gain}){
   s->setColour(juce::Slider::rotarySliderFillColourId,palette.melt);
   s->setColour(juce::Slider::textBoxTextColourId,palette.text);
  }
@@ -113,7 +119,7 @@ std::vector<skellcore::ui::GuidedTourStep> SkellAdlibLabEditor::Canvas::tourStep
       "Use the clip bank and keyboard to perform or trigger captured vocal phrases.",
       std::function<void()>{},&keyboard);
   steps.emplace_back(&chaos,"CONTROL THE CHAOS",
-      "Use CHAOS for creative variation; set the final WIDTH and GAIN to taste.");
+      "Use CHAOS for creative variation; set final WIDTH, MIX and GAIN to taste.");
   return steps;
 }
 skellcore::ui::GuidedTourPalette SkellAdlibLabEditor::Canvas::tourPalette()const {
@@ -122,7 +128,8 @@ skellcore::ui::GuidedTourPalette SkellAdlibLabEditor::Canvas::tourPalette()const
 }
 void SkellAdlibLabEditor::Canvas::sliderValueChanged(juce::Slider* slider){
  if(slider==&width)widthReadout.setText(juce::String(juce::roundToInt(width.getValue()*100.))+"%",juce::dontSendNotification);
- if(slider==&gain)gainReadout.setText(juce::String(juce::roundToInt(gain.getValue()))+"dB",juce::dontSendNotification);
+ if(slider==&mix)mixReadout.setText(juce::String(juce::roundToInt(mix.getValue()*100.))+"%",juce::dontSendNotification);
+ if(slider==&gain)gainReadout.setText(juce::String(gain.getValue(),1)+"dB",juce::dontSendNotification);
 }
 void SkellAdlibLabEditor::Canvas::showPresetMenu(bool visible){
  if(visible){effectPicker.setVisible(false);editor.releaseComputerNotes();}
@@ -199,13 +206,14 @@ void SkellAdlibLabEditor::Canvas::paint(juce::Graphics&g){
  g.setColour(palette.border);g.drawRoundedRectangle(juce::Rectangle<float>(1012,569,233,207),10,1);
  g.setColour(palette.text);g.setFont(Theme::display(15));g.drawText("OUTPUT",1030,577,188,23,juce::Justification::left);
  g.setColour(palette.muted);g.setFont(Theme::mono(10));
- g.drawText("WIDTH",1030,695,89,13,juce::Justification::centred);
- g.drawText("GAIN",1135,695,90,13,juce::Justification::centred);
+ g.drawText("WIDTH",1030,692,66,13,juce::Justification::centred);
+ g.drawText("MIX",1104,692,66,13,juce::Justification::centred);
+ g.drawText("GAIN",1178,692,66,13,juce::Justification::centred);
  g.drawText("LEVEL",1033,746,57,14,juce::Justification::left);
  g.setColour(palette.raised);g.fillRoundedRectangle(juce::Rectangle<float>(1089,749,132,8),3);
  g.setColour(palette.melt);g.fillRoundedRectangle(juce::Rectangle<float>(1090,750,130*juce::jlimit(0.f,1.f,processor.getOutputLevel()),6),2);
  g.setColour(palette.muted);g.setFont(Theme::mono(9));g.drawText(juce::String("SKELL AUDIO    /    ADLIBLAB v")+juce::String(JucePlugin_VersionString),28,785,290,12,juce::Justification::left);
- g.drawText("DRAG TO REORDER  /  CLICK NAME TO REPLACE",885,785,360,12,juce::Justification::right);
+ g.drawText("DRAG HEADER TO MOVE  /  CLICK NAME TO REPLACE",885,785,360,12,juce::Justification::right);
 }
 void SkellAdlibLabEditor::Canvas::layoutModules(){
  const auto order=processor.getModuleOrder();const auto types=processor.getRackTypes();
@@ -265,7 +273,7 @@ void SkellAdlibLabEditor::Canvas::reorder(int slot,int displacement){
 void SkellAdlibLabEditor::Canvas::refreshMeters(bool clipsChanged){
  for(auto*module:modules)if(module->isVisible())module->updateBypassVisual();
  for(auto&panel:extraPanels)if(panel->isVisible())panel->updateBypassVisual();
- header.repaint(1059,8,110,42);keyboard.repaint();throwPanel.repaint(20,109,249,120);repaint(1020,743,221,21);
+ header.repaint(1023,8,112,42);keyboard.repaint();throwPanel.repaint(20,109,249,120);repaint(1020,743,221,21);
  const int currentNote=processor.getNote();
  if(clipsChanged||currentNote!=lastDisplayedNote){lastDisplayedNote=currentNote;bank.repaint();}
 }

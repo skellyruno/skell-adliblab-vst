@@ -76,6 +76,16 @@ int main(int argc,char** argv){
     scene.width=size.width;scene.height=size.height;scene.theme=theme;scene.mode=state;
     options.scenes.push_back(scene);
    }
+  // Cover the other shared effects with actual editor screenshots.
+  for(int effect=8;effect<=10;++effect){
+   const char* type=effect==8?"motion":effect==9?"filter":"saturate";
+   for(const auto& size:std::array<Size,2>{{sizes[0],sizes[2]}}){
+    skellcore::ui::headless::Scene scene;
+    scene.id=juce::String(type)+"-"+size.name;
+    scene.width=size.width;scene.height=size.height;scene.theme=theme;scene.mode=effect;
+    options.scenes.push_back(scene);
+   }
+  }
   options.scenes.push_back({"guided-tour-minimum",800,500,theme,7,false});
   options.scenes.push_back({"guided-tour-design",1280,800,theme,7,false});
   options.configure=[&](const auto& scene){
@@ -85,7 +95,11 @@ int main(int argc,char** argv){
     ++failures;
    }
    // The renderer uses real processor state and real JUCE overlays.
-   processor.setRackType(3,scene.mode==5?adlib::RackType::Empty:adlib::RackType::Chop);
+   const auto effect=scene.mode==5?adlib::RackType::Empty:
+     scene.mode==8?adlib::RackType::Motion:
+     scene.mode==9?adlib::RackType::Filter:
+     scene.mode==10?adlib::RackType::Saturate:adlib::RackType::Chop;
+   processor.setRackType(3,effect);
    editor.refreshRackForScreenshot();
    editor.setPresetMenuForScreenshot(scene.mode==3);
    editor.setEffectPickerForScreenshot(scene.mode==4);
@@ -130,6 +144,12 @@ int main(int argc,char** argv){
                       {"main-design","picker-design"},
                       {"main-design","empty-design"},
                       {"main-design","drag-design"}};
+  options.mustDiffer.push_back({"main-minimum","motion-minimum"});
+  options.mustDiffer.push_back({"main-design","motion-design"});
+  options.mustDiffer.push_back({"main-design","filter-design"});
+  options.mustDiffer.push_back({"main-design","saturate-design"});
+  options.mustDiffer.push_back({"motion-design","filter-design"});
+  options.mustDiffer.push_back({"filter-design","saturate-design"});
   options.mustDiffer.push_back({"main-minimum","guided-tour-minimum"});
   options.mustDiffer.push_back({"main-design","guided-tour-design"});
   const auto report=skellcore::ui::headless::render(editor,folder,options);
@@ -153,7 +173,7 @@ int main(int argc,char** argv){
   }
  }
  if(!skellcore::ui::headless::writePng(overview,out.getChildFile("contact-sheet.png")))++failures;
- if(captured!=76){std::fprintf(stderr,"Expected 76 actual UI PNGs, got %d\n",captured);++failures;}
+ if(captured!=100){std::fprintf(stderr,"Expected 100 actual UI PNGs, got %d\n",captured);++failures;}
  std::printf("SkellCore real editor: %d scenes, %d errors\n",captured,failures);
  processor.releaseResources();
  return failures==0?0:1;

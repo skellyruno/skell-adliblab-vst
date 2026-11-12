@@ -424,7 +424,42 @@ static void testBalancedDefaultStack(){
  assert(std::abs(engine.getVoicePitch(0)+.17f)<1.e-6f);
 }
 
+// Physical-slot bypass must not hard-cut a chopper's muted waveform to dry.
+static void testRackBypassRamp(){
+ for(double sr:{22050.,44100.,48000.,96000.,192000.}){
+  adlib::ChainRouter r;r.prepare(sr);
+  adlib::ChaosEngine chaos;adlib::Params p;adlib::Events e;
+  p.chaos=0.f;p.rackAmount[0]=1.f;p.rackRate[0]=.9f;p.rackTone[0]=.65f;
+  p.rackMix[0]=1.f;p.bpm=120.f;
+  r.setRackTypes({adlib::RackType::Chop,adlib::RackType::Empty,
+                  adlib::RackType::Empty,adlib::RackType::Empty});
+  // Wait for the new rack to complete its 15 ms transition.
+  for(int i=0;i<(int)(sr*.09);++i)r.process({.2f,.2f},p,e,chaos,nullptr);
+  bool foundGate=false;adlib::Stereo previous{};
+  for(int i=0;i<(int)sr;++i){
+   previous=r.process({.2f,.2f},p,e,chaos,nullptr);
+   if(previous.l<.01f){foundGate=true;break;}
+  }
+  assert(foundGate);
+  p.rackOn[0]=false;
+  auto first=r.process({.2f,.2f},p,e,chaos,nullptr);
+  assert(std::abs(first.l-previous.l)<.018f);
+  assert(std::isfinite(first.l)&&std::isfinite(first.r));
+  for(int i=0;i<(int)(sr*.08);++i)
+   first=r.process({.2f,.2f},p,e,chaos,nullptr);
+  assert(std::abs(first.l-.2f)<.001f);
+  p.rackOn[0]=true;
+  auto back=r.process({.2f,.2f},p,e,chaos,nullptr);
+  assert(std::abs(back.l-first.l)<.018f);
+  for(int i=0;i<(int)(sr*.2);++i){
+   back=r.process({.2f,.2f},p,e,chaos,nullptr);
+   assert(std::isfinite(back.l)&&std::isfinite(back.r));
+  }
+ }
+}
+
 int main(){
+ testRackBypassRamp();
  testBalancedDefaultStack();
  testSampleRateInvariantMeltFollowers();
  testThrowShortDivisionBoundary();

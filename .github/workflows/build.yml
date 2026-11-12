@@ -77,7 +77,7 @@ jobs:
             throw 'x64 VST3 module missing from staged artifact'
           }
       - name: Repair and validate staged VST3 moduleinfo.json
-        run: python tools/normalize_moduleinfo.py "artifact/Skell AdlibLab.vst3/Contents/Resources/moduleinfo.json"
+        run: python packaging/normalize_moduleinfo.py "artifact/Skell AdlibLab.vst3/Contents/Resources/moduleinfo.json"
       - uses: actions/upload-artifact@v6
         with:
           name: Skell-AdlibLab-Windows-VST3

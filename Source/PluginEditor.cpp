@@ -122,9 +122,29 @@ void SkellAdlibLabEditor::Canvas::sliderValueChanged(juce::Slider* slider){
  if(slider==&gain)gainReadout.setText(juce::String(juce::roundToInt(gain.getValue()))+"dB",juce::dontSendNotification);
 }
 void SkellAdlibLabEditor::Canvas::showPresetMenu(bool visible){
+ if(visible)effectPicker.setVisible(false);
  presetMenu.setVisible(visible);
  if(visible){presetMenu.toFront(false);presetMenu.grabKeyboardFocus();}
  presetMenu.repaint();
+}
+void SkellAdlibLabEditor::Canvas::openEffectPicker(int slot){
+ if(!juce::isPositiveAndBelow(slot,4))return;
+ pickerSlot=slot;showPresetMenu(false);
+ effectPicker.setVisible(true);effectPicker.toFront(false);effectPicker.grabKeyboardFocus();
+}
+void SkellAdlibLabEditor::Canvas::showEffectPickerForScreenshot(bool visible){
+ if(visible)openEffectPicker(3);
+ else {pickerSlot=-1;effectPicker.setVisible(false);}
+}
+int SkellAdlibLabEditor::Canvas::slotForLegacyPanel(int id)const{
+ const auto expected=id==3?adlib::RackType::LegacyMelt:static_cast<adlib::RackType>(id+1);
+ const auto types=processor.getRackTypes();
+ for(int i=0;i<4;++i)if(types[(size_t)i]==expected)return i;
+ return -1;
+}
+void SkellAdlibLabEditor::Canvas::previewDrag(int slot,int delta,bool active){
+ draggingSlot=active?slot:-1;draggingDelta=active?delta:0;
+ repaint(20,82,1240,468);
 }
 juce::StringArray SkellAdlibLabEditor::Canvas::runControlChecks(){
  juce::StringArray errors;
@@ -167,14 +187,46 @@ void SkellAdlibLabEditor::Canvas::paint(juce::Graphics&g){
  g.setColour(palette.raised);g.fillRoundedRectangle(juce::Rectangle<float>(1089,749,132,8),3);
  g.setColour(palette.melt);g.fillRoundedRectangle(juce::Rectangle<float>(1090,750,130*juce::jlimit(0.f,1.f,processor.getOutputLevel()),6),2);
  g.setColour(palette.muted);g.setFont(Theme::mono(9));g.drawText(juce::String("SKELL AUDIO    /    ADLIBLAB v")+juce::String(JucePlugin_VersionString),28,785,290,12,juce::Justification::left);
- g.drawText("DRAG HEADERS TO REORDER  /  SKULL: THEMES",930,785,317,12,juce::Justification::right);
+ g.drawText("DRAG TO REORDER  /  CLICK NAME TO REPLACE",885,785,360,12,juce::Justification::right);
 }
 void SkellAdlibLabEditor::Canvas::layoutModules(){
- auto order=processor.getModuleOrder();constexpr int positions[]={30,342,654,966};
- for(int i=0;i<4;++i){int id=order[(size_t)i];if(juce::isPositiveAndBelow(id,4))modules[(size_t)id]->setBounds(positions[i],90,290,455);}
+ const auto order=processor.getModuleOrder(), types=processor.getRackTypes();
+ constexpr int positions[]={30,342,654,966};
+ for(auto*panel:modules)panel->setVisible(false);
+ for(auto&panel:extraPanels)panel->setVisible(false);
+ for(auto&empty:emptySlots)empty->setVisible(false);
+ for(int i=0;i<4;++i){
+  const int slot=order[(size_t)i];
+  if(!juce::isPositiveAndBelow(slot,4))continue;
+  const auto type=types[(size_t)slot];
+  juce::Component* panel=nullptr;
+  switch(type){
+   case adlib::RackType::Stack:panel=&stack;break;
+   case adlib::RackType::Character:panel=&character;break;
+   case adlib::RackType::Throw:panel=&throwPanel;break;
+   case adlib::RackType::LegacyMelt:panel=&melt;break;
+   case adlib::RackType::Empty:panel=emptySlots[(size_t)slot].get();break;
+   default:extraPanels[(size_t)slot]->setType(type);
+    panel=extraPanels[(size_t)slot].get();break;
+  }
+  if(panel){panel->setBounds(positions[i],90,290,455);panel->setVisible(true);}
+ }
+ repaint(20,82,1240,470);
 }
-void SkellAdlibLabEditor::Canvas::reorder(int id,int displacement){
- auto order=processor.getModuleOrder();int from=0;for(int i=0;i<4;++i)if(order[(size_t)i]==id)from=i;
+void SkellAdlibLabEditor::Canvas::paintOverChildren(juce::Graphics&g){
+ if(draggingSlot<0)return;
+ const auto order=processor.getModuleOrder();constexpr int positions[]={30,342,654,966};
+ int from=-1;for(int i=0;i<4;++i)if(order[(size_t)i]==draggingSlot)from=i;
+ if(from<0)return;
+ const int dest=juce::jlimit(0,3,from+juce::roundToInt((float)draggingDelta/312.f));
+ const float ghostX=(float)positions[from]+(float)draggingDelta;
+ g.setColour(palette.stack.withAlpha(.10f));g.fillRoundedRectangle(ghostX,91.f,289.f,453.f,11.f);
+ g.setColour(palette.stack.withAlpha(.8f));g.drawRoundedRectangle(ghostX,91.f,289.f,453.f,11.f,2.f);
+ const float marker=(float)positions[dest]-(draggingDelta>=0?11.f:9.f);
+ g.setColour(palette.stack);g.fillRoundedRectangle(marker,101.f,5.f,425.f,2.f);
+}
+void SkellAdlibLabEditor::Canvas::reorder(int slot,int displacement){
+ auto order=processor.getModuleOrder();int from=0;for(int i=0;i<4;++i)if(order[(size_t)i]==slot)from=i;
  // Even a short, intentional grip drag moves to the adjacent slot;
  // longer drags can skip multiple modules.
  int direction=displacement>0?1:-1;
@@ -187,7 +239,8 @@ void SkellAdlibLabEditor::Canvas::reorder(int id,int displacement){
  order[(size_t)to]=moved;processor.setModuleOrder(order);layoutModules();
 }
 void SkellAdlibLabEditor::Canvas::refreshMeters(bool clipsChanged){
- for(auto*module:modules)module->updateBypassVisual();
+ for(auto*module:modules)if(module->isVisible())module->updateBypassVisual();
+ for(auto&panel:extraPanels)if(panel->isVisible())panel->updateBypassVisual();
  header.repaint(1059,8,110,42);keyboard.repaint();throwPanel.repaint(20,109,249,120);repaint(1020,743,221,21);
  const int currentNote=processor.getNote();
  if(clipsChanged||currentNote!=lastDisplayedNote){lastDisplayedNote=currentNote;bank.repaint();}
@@ -225,6 +278,7 @@ void SkellAdlibLabEditor::dismissGuidedTourForScreenshot(){
 }
 void SkellAdlibLabEditor::applyLookAndFeelPalette(const Theme::Palette&p){lookAndFeel.applyPalette(p);canvas.repaint();}
 void SkellAdlibLabEditor::setPresetMenuForScreenshot(bool visible){canvas.showPresetMenu(visible);}
+void SkellAdlibLabEditor::setEffectPickerForScreenshot(bool visible){canvas.showEffectPickerForScreenshot(visible);}
 juce::StringArray SkellAdlibLabEditor::runUIInteractionTests(){return canvas.runControlChecks();}
 void SkellAdlibLabEditor::timerCallback(){
  const bool clipChanged=processor.collectRecordedClip();

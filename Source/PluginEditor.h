@@ -26,6 +26,10 @@ public:
  juce::StringArray runUIInteractionTests();
  bool showGuidedTourForScreenshot();
  void dismissGuidedTourForScreenshot();
+ bool keyPressed(const juce::KeyPress&)override;
+ bool keyStateChanged(bool)override;
+ void focusLost(FocusChangeType)override;
+ void releaseComputerNotes();
 private:
  class Canvas final:public juce::Component,private juce::Slider::Listener {
  public:
@@ -38,6 +42,7 @@ private:
   void previewDrag(int slot,int delta,bool active);
   void openEffectPicker(int slot);
   void showEffectPickerForScreenshot(bool enabled);
+  void ensureRackLayoutCurrent();
   void layoutModules();
   void refreshMeters(bool clipsChanged);
   void sliderValueChanged(juce::Slider*)override;
@@ -63,6 +68,8 @@ private:
   std::array<std::unique_ptr<EmptyRackSlot>,4> emptySlots;
   EffectPickerView effectPicker;
   int pickerSlot=-1,draggingSlot=-1,draggingDelta=0;
+  adlib::RackTypes displayedTypes{};
+  std::array<int,4>displayedOrder{{-1,-1,-1,-1}};
   ChaosKnob chaos;
   ClipBankView bank;
   MiniKeyboard keyboard;
@@ -76,6 +83,8 @@ private:
  }canvas;
  void timerCallback()override;
  SkellAdlibLabProcessor&processor;
+ int keyboardOctave=0;
+ std::array<bool,24>computerHeld{};
  LabLookAndFeel lookAndFeel;
  std::unique_ptr<skellcore::ui::GuidedTourController> guidedTour;
  void showGuidedTour(bool firstRun);

@@ -35,7 +35,8 @@ jobs:
           renderer=$(find build-renderer -type f -name SkellAdlibLabUIRenderer -executable | head -n 1)
           test -n "$renderer"
           xvfb-run -a -s '-screen 0 2560x1600x24' "$renderer" --output ui-screenshots
-          test "$(find ui-screenshots -name '*.png' | wc -l)" -eq 46
+          # 76 real-editor states plus one contact sheet.
+          test "$(find ui-screenshots -name '*.png' | wc -l)" -eq 77
       - name: Upload screenshots and contact sheet
         if: always()
         uses: actions/upload-artifact@v6

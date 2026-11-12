@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(SkellAdlibLab VERSION 0.9.3 LANGUAGES C CXX)
+project(SkellAdlibLab VERSION 0.10.0 LANGUAGES C CXX)
 
 include(FetchContent)
 if(DEFINED JUCE_PATH AND EXISTS "${JUCE_PATH}/CMakeLists.txt")
@@ -13,7 +13,7 @@ endif()
 # the SAME immutable SkellCore checkout. The older bundled SkellCore copy is
 # intentionally not added to the build.
 option(SKELL_ADLIBLAB_BUILD_UI_RENDERER "Build real JUCE editor screenshots" OFF)
-set(SKELL_ADLIBLAB_SKELLCORE_REV "b0c79ff75cf7f1ca7e55ad231a9a9013f7c9e6c3"
+set(SKELL_ADLIBLAB_SKELLCORE_REV "eb56702153c4373799a4e8e2663e0f158c0115a6"
     CACHE STRING "Tested immutable SkellCore revision")
 FetchContent_Declare(SkellCoreDependency
   GIT_REPOSITORY https://github.com/skellyruno/skellcore-vst-template.git

@@ -6,6 +6,8 @@
 #include "ui/CharacterPanel.h"
 #include "ui/ThrowPanel.h"
 #include "ui/MeltPanel.h"
+#include "ui/RackExtraPanel.h"
+#include "ui/EffectPickerView.h"
 #include "ui/ClipBankView.h"
 #include "ui/MiniKeyboard.h"
 #include "ui/ChaosKnob.h"
@@ -20,16 +22,30 @@ public:
  void resized()override;
  void applyLookAndFeelPalette(const Theme::Palette&);
  void setPresetMenuForScreenshot(bool);
+ void setEffectPickerForScreenshot(bool);
+ void refreshRackForScreenshot();
+ void setDragPreviewForScreenshot(bool);
  juce::StringArray runUIInteractionTests();
  bool showGuidedTourForScreenshot();
  void dismissGuidedTourForScreenshot();
+ bool keyPressed(const juce::KeyPress&)override;
+ bool keyStateChanged(bool)override;
+ void focusLost(FocusChangeType)override;
+ void releaseComputerNotes();
 private:
  class Canvas final:public juce::Component,private juce::Slider::Listener {
  public:
   Canvas(SkellAdlibLabProcessor&,SkellAdlibLabEditor&);
   ~Canvas()override{width.removeListener(this);gain.removeListener(this);}
   void paint(juce::Graphics&)override;
-  void reorder(int id,int displacement);
+  void paintOverChildren(juce::Graphics&)override;
+  void reorder(int slot,int displacement);
+  int slotForLegacyPanel(int id)const;
+  void previewDrag(int slot,int delta,bool active);
+  void openEffectPicker(int slot);
+  void showEffectPickerForScreenshot(bool enabled);
+  void ensureRackLayoutCurrent();
+  bool hasOpenOverlay()const noexcept{return presetMenu.isVisible()||effectPicker.isVisible();}
   void layoutModules();
   void refreshMeters(bool clipsChanged);
   void sliderValueChanged(juce::Slider*)override;
@@ -51,6 +67,12 @@ private:
   CharacterPanel character;
   ThrowPanel throwPanel;
   MeltPanel melt;
+  std::array<std::unique_ptr<RackExtraPanel>,4> extraPanels;
+  std::array<std::unique_ptr<EmptyRackSlot>,4> emptySlots;
+  EffectPickerView effectPicker;
+  int pickerSlot=-1,draggingSlot=-1,draggingDelta=0;
+  adlib::RackTypes displayedTypes{};
+  std::array<int,4>displayedOrder{{-1,-1,-1,-1}};
   ChaosKnob chaos;
   ClipBankView bank;
   MiniKeyboard keyboard;
@@ -64,6 +86,8 @@ private:
  }canvas;
  void timerCallback()override;
  SkellAdlibLabProcessor&processor;
+ int keyboardOctave=0;
+ std::array<bool,24>computerHeld{};
  LabLookAndFeel lookAndFeel;
  std::unique_ptr<skellcore::ui::GuidedTourController> guidedTour;
  void showGuidedTour(bool firstRun);

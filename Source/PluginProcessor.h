@@ -10,6 +10,7 @@
 #include "dsp/PhraseTracker.h"
 #include "dsp/ChaosEngine.h"
 #include "dsp/ModuleOrder.h"
+#include "dsp/RackState.h"
 
 class SkellAdlibLabProcessor final : public juce::AudioProcessor, private juce::Timer {
 public:
@@ -52,6 +53,9 @@ public:
  void triggerThrow(){throwRequested.store(true);}
  void setModuleOrder(std::array<int,4>);
  std::array<int,4> getModuleOrder()const;
+ adlib::RackTypes getRackTypes()const noexcept{return rackState.load();}
+ bool setRackTypes(const adlib::RackTypes& types);
+ bool setRackType(int slot,adlib::RackType type);
  void setVoicePosition(int i,float pan,float pitch){route.stack.setVoicePosition(i,pan,pitch);}
  float getVoicePan(int i)const{return route.stack.getVoicePan(i);}
  float getVoicePitch(int i)const{return route.stack.getVoicePitch(i);}
@@ -78,6 +82,7 @@ private:
  std::atomic<const adlib::ClipBank::Clip*>meltSample{nullptr};
  std::vector<std::unique_ptr<adlib::ClipBank::Clip>>retainedMelt;
  adlib::ModuleOrder moduleOrder;
+ adlib::RackState rackState;
  std::atomic<bool>reRollRequested{false},throwRequested{false};
  std::atomic<int>auditionPadRequested{-1},recordPadRequested{-1},recordReadyPad{-1};
  // One message-thread producer, one audio-thread consumer. Preserves note-off /

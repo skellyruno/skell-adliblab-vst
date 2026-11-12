@@ -6,13 +6,17 @@
 class DragGrip final:public juce::Component {
 public:
  std::function<void(int)>onDrop;
+ std::function<void(int,bool)>onPreview;
  explicit DragGrip(const Theme::Palette&pal):palette(pal){}
  void paint(juce::Graphics&g)override{
   g.setColour(palette.text.withAlpha(.64f));
   for(int y=0;y<3;++y)for(int x=0;x<2;++x)g.fillEllipse((float)x*6+6,(float)y*6+5,2.5f,2.5f);
  }
- void mouseDown(const juce::MouseEvent&e)override{start=e.getScreenX();}
- void mouseUp(const juce::MouseEvent&e)override{int delta=e.getScreenX()-start;if(std::abs(delta)>45&&onDrop)onDrop(delta);}
+ void mouseDown(const juce::MouseEvent&e)override{start=e.getScreenX();if(onPreview)onPreview(0,true);}
+ void mouseDrag(const juce::MouseEvent&e)override{if(onPreview)onPreview(e.getScreenX()-start,true);}
+ void mouseUp(const juce::MouseEvent&e)override{int delta=e.getScreenX()-start;
+  if(onPreview)onPreview(delta,false);
+  if(std::abs(delta)>45&&onDrop)onDrop(delta);}
 private:int start=0;const Theme::Palette&palette;
 };
 // Retains ToggleButton/APVTS behavior, but renders a clean power symbol.
@@ -55,25 +59,39 @@ public:
  using ComboAttachment=juce::AudioProcessorValueTreeState::ComboBoxAttachment;
  ModulePanel(SkellAdlibLabProcessor&p,const Theme::Palette&pal,int id,juce::String name,const char*enabled)
   :processor(p),palette(pal),moduleId(id),title(std::move(name)),grip(palette),on(palette,id){
-   grip.onDrop=[this](int x){if(requestReorder)requestReorder(moduleId,x);};addAndMakeVisible(grip);grip.setBounds(249,11,29,28);
+   grip.onDrop=[this](int x){if(requestReorder)requestReorder(moduleId,x);};
+   grip.onPreview=[this](int dx,bool active){if(requestPreview)requestPreview(moduleId,dx,active);};
+   addAndMakeVisible(grip);grip.setBounds(249,11,29,28);
    on.setButtonText("");addAndMakeVisible(on);on.setBounds(207,10,31,31);
    on.onClick=[this]{updateBypassVisual();};
+   remove.setButtonText("X");remove.setBounds(179,14,20,22);
+   remove.setTooltip("Remove effect (shows + empty slot)");
+   remove.onClick=[this]{if(requestRemove)requestRemove(moduleId);};
+   addAndMakeVisible(remove);
    toggles.push_back(std::make_unique<ButtonAttachment>(p.parameters,enabled,on));
   }
  ~ModulePanel()override{for(auto*slider:sliders)slider->removeListener(this);}
  std::function<void(int,int)>requestReorder;
+ std::function<void(int)>requestReplace,requestRemove;
+ std::function<void(int,int,bool)>requestPreview;
+ void setEffectTitle(const juce::String& value){if(title!=value){title=value;repaint();}}
  // The whole exposed header can be dragged horizontally except its buttons.
  void mouseDown(const juce::MouseEvent&e)override{
   if(e.mods.isPopupMenu()||e.position.y>53.f)return;
-  dragStart=e.getScreenX();dragging=true;repaint();
+  dragStart=e.getScreenX();dragging=true;
+  if(requestPreview)requestPreview(moduleId,0,true);
+  repaint();
  }
  void mouseDrag(const juce::MouseEvent&e)override{
-  if(dragging){dragOffset=e.getScreenX()-dragStart;repaint();}
+  if(dragging){dragOffset=e.getScreenX()-dragStart;
+   if(requestPreview)requestPreview(moduleId,dragOffset,true);repaint();}
  }
  void mouseUp(const juce::MouseEvent&e)override{
   if(!dragging)return;
   int delta=e.getScreenX()-dragStart;dragging=false;dragOffset=0;repaint();
-  if(std::abs(delta)>=36&&requestReorder)requestReorder(moduleId,delta);
+  if(requestPreview)requestPreview(moduleId,delta,false);
+  if(std::abs(delta)>=36){if(requestReorder)requestReorder(moduleId,delta);}
+  else if(requestReplace)requestReplace(moduleId);
  }
  void mouseMove(const juce::MouseEvent&e)override{
   setMouseCursor(e.position.y<=53.f?juce::MouseCursor::DraggingHandCursor:juce::MouseCursor::NormalCursor);
@@ -88,7 +106,7 @@ public:
   lastEnabled=enabled?1:0;
   for(int i=0;i<getNumChildComponents();++i){
    auto* child=getChildComponent(i);
-   if(child!=&on&&child!=&grip)child->setAlpha(enabled?1.f:.80f);
+   if(child!=&on&&child!=&grip&&child!=&remove)child->setAlpha(enabled?1.f:.80f);
   }
   repaint();
  }
@@ -96,6 +114,8 @@ public:
   updateBypassVisual();
   on.setColour(juce::ToggleButton::tickColourId,accent());
   on.setColour(juce::ToggleButton::textColourId,palette.text);
+  remove.setColour(juce::TextButton::buttonColourId,palette.raised);
+  remove.setColour(juce::TextButton::textColourOffId,palette.muted);
   for(auto*s:sliders){s->setColour(juce::Slider::rotarySliderFillColourId,accent());s->setColour(juce::Slider::textBoxTextColourId,palette.text);}
   for(auto* l:labels)l->setColour(juce::Label::textColourId,palette.muted);
   for(auto* v:readouts)v->setColour(juce::Label::textColourId,palette.text);
@@ -119,14 +139,13 @@ public:
   g.setColour(accent());g.fillRoundedRectangle(2.f,4.f,3.f,46.f,1.3f);
   g.fillRoundedRectangle(18.f,52.f,35.f,2.f,1.f);
   g.setColour(palette.text);g.setFont(Theme::display(17));
-  g.drawText(title,19,11,163,28,juce::Justification::left);
+  g.drawFittedText(title,19,11,157,28,juce::Justification::left,1);
   if(on.getToggleState()){
-   g.setColour(accent().withAlpha(.83f));g.setFont(Theme::mono(10));
-   g.drawText(juce::String(moduleId+1).paddedLeft('0',2),186,18,18,16,juce::Justification::centred);
+   // Effect name is a replace action; X independently removes the slot.
   }else{
    g.setColour(palette.background.withAlpha(.07f));g.fillRoundedRectangle(1.f,54.f,288.f,399.f,9.f);
    g.setColour(palette.muted);g.setFont(Theme::mono(10));
-   g.drawText("OFF",157,17,43,18,juce::Justification::right);
+   g.drawText("OFF",148,36,44,14,juce::Justification::right);
   }
   g.setColour(palette.muted);g.setFont(Theme::mono(9));
   // Six-dot grip remains the drag affordance; extra microtext removed.
@@ -192,7 +211,7 @@ private:
    return;
   }
  }
- DragGrip grip;ModulePowerButton on;int lastEnabled=-1;
+ DragGrip grip;ModulePowerButton on;juce::TextButton remove;int lastEnabled=-1;
  bool dragging=false;int dragStart=0,dragOffset=0;
  juce::OwnedArray<juce::Slider>sliders;juce::OwnedArray<juce::Label>labels,readouts;
  std::vector<juce::String> readoutParams;

@@ -82,6 +82,19 @@ Layout SkellAdlibLabProcessor::createLayout(){
  b(l,"kbVelIntensity","Velocity to Intensity",true);
  b(l,"kbVelTail","Velocity to Tail",true);
  b(l,"kbAltReverse","Alternate Keys Reverse",false);
+ // Four physical slots have fixed automation IDs, regardless of effect type.
+ static constexpr const char* on[]={"slot0On","slot1On","slot2On","slot3On"};
+ static constexpr const char* amount[]={"slot0Amount","slot1Amount","slot2Amount","slot3Amount"};
+ static constexpr const char* rate[]={"slot0Rate","slot1Rate","slot2Rate","slot3Rate"};
+ static constexpr const char* tone[]={"slot0Tone","slot1Tone","slot2Tone","slot3Tone"};
+ static constexpr const char* mix[]={"slot0Mix","slot1Mix","slot2Mix","slot3Mix"};
+ for(int slot=0;slot<4;++slot){
+  b(l,on[slot],on[slot],true);
+  f(l,amount[slot],amount[slot],0,1,.75f);
+  f(l,rate[slot],rate[slot],0,1,.5f);
+  f(l,tone[slot],tone[slot],0,1,.5f);
+  f(l,mix[slot],mix[slot],0,1,1.f);
+ }
  return l;
 }
 SkellAdlibLabProcessor::SkellAdlibLabProcessor():AudioProcessor(
@@ -152,6 +165,16 @@ adlib::Params SkellAdlibLabProcessor::loadParams()const{
  p.charOn=yes("charOn");p.charType=integer("charType");p.charIntensity=val("charIntensity");p.charFormant=val("charFormant");p.charGlide=val("charGlide");p.charCrush=val("charCrush");p.charDetune=val("charDetune");
  p.throwOn=yes("throwOn");p.throwMode=integer("throwMode");p.throwDiv=integer("throwDiv");p.throwFeedback=val("throwFeedback");p.throwRepeats=integer("throwRepeats");p.throwFilterStart=val("throwFilterStart");p.throwFilterEnd=val("throwFilterEnd");p.throwPitchPerRepeat=val("throwPitchPerRepeat");p.throwDuck=val("throwDuck");p.throwReverse=yes("throwReverse");p.throwPingPong=yes("throwPingPong");
  p.meltOn=yes("meltOn");p.meltMode=integer("meltMode");p.meltAmount=val("meltAmount");p.meltFollowPitch=val("meltFollowPitch");p.meltFollowLoudness=val("meltFollowLoudness");p.meltSmooth=val("meltSmooth");p.meltRoot=integer("meltRoot");
+ static constexpr const char* on[]={"slot0On","slot1On","slot2On","slot3On"};
+ static constexpr const char* amount[]={"slot0Amount","slot1Amount","slot2Amount","slot3Amount"};
+ static constexpr const char* rate[]={"slot0Rate","slot1Rate","slot2Rate","slot3Rate"};
+ static constexpr const char* tone[]={"slot0Tone","slot1Tone","slot2Tone","slot3Tone"};
+ static constexpr const char* mix[]={"slot0Mix","slot1Mix","slot2Mix","slot3Mix"};
+ for(int i=0;i<4;++i){
+  p.rackOn[(size_t)i]=yes(on[i]);
+  p.rackAmount[(size_t)i]=val(amount[i]);p.rackRate[(size_t)i]=val(rate[i]);
+  p.rackTone[(size_t)i]=val(tone[i]);p.rackMix[(size_t)i]=val(mix[i]);
+ }
  p.midiChannel=integer("midiChannel");p.kbRoot=integer("kbRoot");p.kbFormantLock=yes("kbFormantLock");p.kbVelIntensity=yes("kbVelIntensity");p.kbVelTail=yes("kbVelTail");p.kbAltReverse=yes("kbAltReverse");
  return p;
 }
@@ -167,6 +190,17 @@ void SkellAdlibLabProcessor::setModuleOrder(std::array<int,4> order){
  parameters.state.setProperty("moduleOrder",text,nullptr);
 }
 
+bool SkellAdlibLabProcessor::setRackTypes(const adlib::RackTypes& types){
+ if(!rackState.store(types))return false;
+ juce::String text;
+ for(int i=0;i<4;++i){if(i)text<<",";text<<(int)types[(size_t)i];}
+ parameters.state.setProperty("rackTypes",text,nullptr);
+ return true;
+}
+bool SkellAdlibLabProcessor::setRackType(int slot,adlib::RackType type){
+ if(!rackState.replace(slot,type))return false;
+ return setRackTypes(rackState.load());
+}
 void SkellAdlibLabProcessor::processBlock(juce::AudioBuffer<float>&buffer,juce::MidiBuffer&midi){
  juce::ScopedNoDenormals noDenormals;
  const int n=buffer.getNumSamples(),channels=buffer.getNumChannels();
@@ -179,6 +213,7 @@ void SkellAdlibLabProcessor::processBlock(juce::AudioBuffer<float>&buffer,juce::
    skellcore::updateTempoFromPlayhead(hostTempoClock,*position);
  p.bpm=static_cast<float>(hostTempoClock.bpm());
  route.setOrder(getModuleOrder());
+ route.setRackTypes(rackState.load());
  const auto*sample=meltSample.load(std::memory_order_acquire);
  mixSmooth.setTargetValue(p.mix);
  gainSmooth.setTargetValue(juce::Decibels::decibelsToGain(p.outputGain));
@@ -330,6 +365,9 @@ void SkellAdlibLabProcessor::getStateInformation(juce::MemoryBlock&dest){
  auto tree=parameters.copyState();
  juce::String ord;const auto order=moduleOrder.load();for(int i=0;i<4;++i){if(i)ord<<",";ord<<order[(size_t)i];}
  tree.setProperty("moduleOrder",ord,nullptr);
+ juce::String rack;const auto types=rackState.load();
+ for(int i=0;i<4;++i){if(i)rack<<",";rack<<(int)types[(size_t)i];}
+ tree.setProperty("rackTypes",rack,nullptr);
  for(int i=0;i<8;++i){tree.setProperty("voicePan"+juce::String(i),route.stack.getVoicePan(i),nullptr);tree.setProperty("voicePitch"+juce::String(i),route.stack.getVoicePitch(i),nullptr);}
  tree.writeToStream(out);
  for(int i=0;i<8;++i){
@@ -356,6 +394,14 @@ void SkellAdlibLabProcessor::setStateInformation(const void*data,int bytes){
  if(arr.size()==4){std::array<int,4>order{};for(int i=0;i<4;++i)order[(size_t)i]=arr[i].getIntValue();
   std::array<bool,4>seen{};bool valid=true;for(int x:order){if(!juce::isPositiveAndBelow(x,4)||seen[(size_t)x])valid=false;else seen[(size_t)x]=true;}
   if(valid)moduleOrder.store(order);
+ }
+ // v0.9.x presets did not store rackTypes: retain legacy MELT verbatim.
+ const auto typesText=juce::StringArray::fromTokens(
+     tree.getProperty("rackTypes","1,2,3,8").toString(),",","");
+ if(typesText.size()==4){
+  adlib::RackTypes restored{};
+  for(int i=0;i<4;++i)restored[(size_t)i]=static_cast<adlib::RackType>(typesText[i].getIntValue());
+  rackState.store(restored);
  }
  parameters.replaceState(tree);
  for(int i=0;i<8;++i){

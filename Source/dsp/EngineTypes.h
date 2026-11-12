@@ -41,6 +41,9 @@ struct Params {
  bool throwOn=true; int throwMode=0,throwDiv=2,throwRepeats=4;float throwFeedback=0.55f,throwFilterStart=12000,throwFilterEnd=1000,throwPitchPerRepeat=0,throwDuck=0.4f;
  bool throwReverse=false,throwPingPong=true;
  bool meltOn=false; int meltMode=0; float meltAmount=0.4f,meltFollowPitch=0.5f,meltFollowLoudness=0.8f,meltSmooth=0.4f;int meltRoot=60;
+ std::array<bool,4> rackOn{{true,true,true,true}};
+ std::array<float,4> rackAmount{{.75f,.75f,.75f,.75f}},rackRate{{.5f,.5f,.5f,.5f}};
+ std::array<float,4> rackTone{{.5f,.5f,.5f,.5f}},rackMix{{1.f,1.f,1.f,1.f}};
  int midiChannel=0,kbRoot=60;bool kbFormantLock=true,kbVelIntensity=true,kbVelTail=true,kbAltReverse=false;
 };
 }

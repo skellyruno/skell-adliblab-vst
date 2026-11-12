@@ -162,7 +162,8 @@ juce::StringArray SkellAdlibLabEditor::Canvas::runControlChecks(){
   errors.add("Shuffle did not change real automatable parameters");
  if(std::abs(oldType-value("charType"))<.5f&&std::abs(oldSpread-value("stackSpread"))<.01f&&std::abs(oldChaos-value("chaos"))<.0001f)
   errors.add("Shuffle left sound controls unchanged");
- const auto shuffledTypes=processor.getRackTypes(),shuffledOrder=processor.getModuleOrder();
+ const auto shuffledTypes=processor.getRackTypes();
+ const auto shuffledOrder=processor.getModuleOrder();
  header.undoLastShuffle();
  if((int)value("charType")!=1||header.getPresetLabel()!="ROBOT INCOMING")
   errors.add("Undo Shuffle did not recover previous patch");

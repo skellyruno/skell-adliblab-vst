@@ -6,6 +6,8 @@
 #include "ui/CharacterPanel.h"
 #include "ui/ThrowPanel.h"
 #include "ui/MeltPanel.h"
+#include "ui/RackExtraPanel.h"
+#include "ui/EffectPickerView.h"
 #include "ui/ClipBankView.h"
 #include "ui/MiniKeyboard.h"
 #include "ui/ChaosKnob.h"
@@ -20,6 +22,7 @@ public:
  void resized()override;
  void applyLookAndFeelPalette(const Theme::Palette&);
  void setPresetMenuForScreenshot(bool);
+ void setEffectPickerForScreenshot(bool);
  juce::StringArray runUIInteractionTests();
  bool showGuidedTourForScreenshot();
  void dismissGuidedTourForScreenshot();
@@ -29,7 +32,12 @@ private:
   Canvas(SkellAdlibLabProcessor&,SkellAdlibLabEditor&);
   ~Canvas()override{width.removeListener(this);gain.removeListener(this);}
   void paint(juce::Graphics&)override;
-  void reorder(int id,int displacement);
+  void paintOverChildren(juce::Graphics&)override;
+  void reorder(int slot,int displacement);
+  int slotForLegacyPanel(int id)const;
+  void previewDrag(int slot,int delta,bool active);
+  void openEffectPicker(int slot);
+  void showEffectPickerForScreenshot(bool enabled);
   void layoutModules();
   void refreshMeters(bool clipsChanged);
   void sliderValueChanged(juce::Slider*)override;
@@ -51,6 +59,10 @@ private:
   CharacterPanel character;
   ThrowPanel throwPanel;
   MeltPanel melt;
+  std::array<std::unique_ptr<RackExtraPanel>,4> extraPanels;
+  std::array<std::unique_ptr<EmptyRackSlot>,4> emptySlots;
+  EffectPickerView effectPicker;
+  int pickerSlot=-1,draggingSlot=-1,draggingDelta=0;
   ChaosKnob chaos;
   ClipBankView bank;
   MiniKeyboard keyboard;

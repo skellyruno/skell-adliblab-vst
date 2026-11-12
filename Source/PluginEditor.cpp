@@ -2,7 +2,7 @@
 SkellAdlibLabEditor::Canvas::Canvas(SkellAdlibLabProcessor&p,SkellAdlibLabEditor&ed)
  :processor(p),editor(ed),palette(Theme::makePalette(p.getThemeIndex())),themeIndex(p.getThemeIndex()),
  header(p,palette),stack(p,palette),character(p,palette),throwPanel(p,palette),melt(p,palette),
- chaos(p,palette),bank(p,palette),keyboard(p,palette),presetMenu(palette),
+ effectPicker(palette),chaos(p,palette),bank(p,palette),keyboard(p,palette),presetMenu(palette),
  widthAtt(p.parameters,"width",width),gainAtt(p.parameters,"outputGain",gain),
  limiterAtt(p.parameters,"safetyLimiter",limiter),formantAtt(p.parameters,"kbFormantLock",formant),
  velIntensityAtt(p.parameters,"kbVelIntensity",velIntensity),velTailAtt(p.parameters,"kbVelTail",velTail),reverseAtt(p.parameters,"kbAltReverse",reverse),
@@ -12,7 +12,26 @@ SkellAdlibLabEditor::Canvas::Canvas(SkellAdlibLabProcessor&p,SkellAdlibLabEditor
  header.onThemeCycle=[this]{int next=(themeIndex+1)%4;processor.setThemeIndex(next);applyTheme(next);};
  header.onThemeSelect=[this](int next){processor.setThemeIndex(next);applyTheme(next);};
  header.onPresetClicked=[this]{showPresetMenu(!presetMenu.isVisible());};
- for(auto* module:modules){addAndMakeVisible(module);module->requestReorder=[this](int id,int displacement){reorder(id,displacement);};}
+ for(int id=0;id<4;++id){
+  auto* module=modules[(size_t)id];addAndMakeVisible(module);
+  module->requestReorder=[this,id](int,int dx){const int slot=slotForLegacyPanel(id);if(slot>=0)reorder(slot,dx);};
+  module->requestRemove=[this,id](int){const int slot=slotForLegacyPanel(id);
+    if(slot>=0){processor.setRackType(slot,adlib::RackType::Empty);layoutModules();}};
+  module->requestReplace=[this,id](int){openEffectPicker(slotForLegacyPanel(id));};
+  module->requestPreview=[this,id](int,int dx,bool active){const int slot=slotForLegacyPanel(id);
+    if(slot>=0)previewDrag(slot,dx,active);};
+ }
+ for(int slot=0;slot<4;++slot){
+  extraPanels[(size_t)slot]=std::make_unique<RackExtraPanel>(p,palette,slot);
+  emptySlots[(size_t)slot]=std::make_unique<EmptyRackSlot>(palette,slot);
+  auto& panel=*extraPanels[(size_t)slot];
+  panel.requestReorder=[this,slot](int,int dx){reorder(slot,dx);};
+  panel.requestRemove=[this,slot](int){processor.setRackType(slot,adlib::RackType::Empty);layoutModules();};
+  panel.requestReplace=[this,slot](int){openEffectPicker(slot);};
+  panel.requestPreview=[this,slot](int,int dx,bool active){previewDrag(slot,dx,active);};
+  emptySlots[(size_t)slot]->onAdd=[this](int id){openEffectPicker(id);};
+  addAndMakeVisible(panel);addAndMakeVisible(*emptySlots[(size_t)slot]);
+ }
  layoutModules();
  addAndMakeVisible(chaos);chaos.setBounds(27,567,233,214);
  addAndMakeVisible(bank);bank.setBounds(286,590,708,68);
@@ -44,6 +63,13 @@ SkellAdlibLabEditor::Canvas::Canvas(SkellAdlibLabProcessor&p,SkellAdlibLabEditor
  header.refreshTheme();for(auto*module:modules)module->refreshTheme();
  addAndMakeVisible(presetMenu);presetMenu.setBounds(0,0,Theme::designWidth,Theme::designHeight);
  presetMenu.setVisible(false);
+ addAndMakeVisible(effectPicker);effectPicker.setBounds(0,0,Theme::designWidth,Theme::designHeight);
+ effectPicker.setVisible(false);
+ effectPicker.onChoose=[this](adlib::RackType type){
+  if(pickerSlot>=0)processor.setRackType(pickerSlot,type);
+  pickerSlot=-1;effectPicker.setVisible(false);layoutModules();
+ };
+ effectPicker.onDismiss=[this]{pickerSlot=-1;effectPicker.setVisible(false);};
  presetMenu.onChoice=[this](int id){showPresetMenu(false);header.applyPresetSelection(id);};
  presetMenu.onDismiss=[this]{showPresetMenu(false);};
 }
@@ -54,6 +80,9 @@ void SkellAdlibLabEditor::Canvas::applyTheme(int index){
  widthReadout.setColour(juce::Label::textColourId,palette.text);
  gainReadout.setColour(juce::Label::textColourId,palette.text);
  for(auto*module:modules)module->refreshTheme();
+ for(auto&panel:extraPanels)panel->refreshTheme();
+ for(auto&empty:emptySlots)empty->repaint();
+ effectPicker.repaint();
  for(auto*s:{&width,&gain}){
   s->setColour(juce::Slider::rotarySliderFillColourId,palette.melt);
   s->setColour(juce::Slider::textBoxTextColourId,palette.text);
@@ -75,8 +104,8 @@ std::vector<skellcore::ui::GuidedTourStep> SkellAdlibLabEditor::Canvas::tourStep
       "Choose vocal character and tone without changing your original recording.");
   steps.emplace_back(&throwPanel,"ADLIB THROWS",
       "Set timed throws and repeats; use the panel's controls for movement.");
-  steps.emplace_back(&melt,"MELT AND TEXTURE",
-      "Shape the texture and transition of your adlibs.");
+  steps.emplace_back(extraPanels[3].get(),"CHANGE ANY EFFECT",
+      "Click its name to replace an effect; X removes it, and + adds another.");
   steps.emplace_back(&bank,"RECORD AND TRIGGER",
       "Use the clip bank and keyboard to perform or trigger captured vocal phrases.",
       std::function<void()>{},&keyboard);

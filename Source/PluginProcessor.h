@@ -11,6 +11,7 @@
 #include "dsp/ChaosEngine.h"
 #include "dsp/ModuleOrder.h"
 #include "dsp/RackState.h"
+#include "dsp/GlobalBypassFader.h"
 
 class SkellAdlibLabProcessor final : public juce::AudioProcessor, private juce::Timer {
 public:
@@ -107,6 +108,7 @@ private:
  std::atomic<int>activeMidiNote{-1};
  double sampleRate=44100;
  juce::SmoothedValue<float,juce::ValueSmoothingTypes::Linear> mixSmooth,gainSmooth;
+ adlib::GlobalBypassFader globalBypass;
  void publishMelt(std::unique_ptr<adlib::ClipBank::Clip>);
  JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SkellAdlibLabProcessor)
 };

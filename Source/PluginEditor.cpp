@@ -190,7 +190,7 @@ void SkellAdlibLabEditor::Canvas::paint(juce::Graphics&g){
  g.drawText("DRAG TO REORDER  /  CLICK NAME TO REPLACE",885,785,360,12,juce::Justification::right);
 }
 void SkellAdlibLabEditor::Canvas::layoutModules(){
- const auto order=processor.getModuleOrder(), types=processor.getRackTypes();
+ const auto order=processor.getModuleOrder();const auto types=processor.getRackTypes();
  constexpr int positions[]={30,342,654,966};
  for(auto*panel:modules)panel->setVisible(false);
  for(auto&panel:extraPanels)panel->setVisible(false);

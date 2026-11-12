@@ -21,7 +21,7 @@ assert re.search(r'\bFORMATS\s+VST3\s*\n', cmake), 'Expected Windows VST3 only'
 assert 'SkellCoreDependency' in cmake and 'SkellCore::UIRenderer' in cmake
 assert 'SkellCore::DSP SkellCore::UI' in cmake, 'SkellCore missing from release'
 assert 'skellcore-vst-template.git' in cmake, 'Wrong SkellCore repo'
-assert 'b0c79ff75cf7f1ca7e55ad231a9a9013f7c9e6c3' in cmake
+assert 'cf2d182a1c4b1b45f97253f5e1b17dd91343aeaa' in cmake
 assert 'SkellGuidedTourHeaders' not in cmake, 'Duplicate SkellCore checkout'
 assert 'add_subdirectory(SkellCore)' not in cmake, 'Stale bundled core must not build'
 assert 'HostTempoClock.h' in header and 'updateTempoFromPlayhead' in source

@@ -224,6 +224,8 @@ void SkellAdlibLabEditor::Canvas::layoutModules(){
    case adlib::RackType::Throw:panel=&throwPanel;break;
    case adlib::RackType::LegacyMelt:panel=&melt;break;
    case adlib::RackType::Empty:panel=emptySlots[(size_t)slot].get();break;
+   case adlib::RackType::Chop:case adlib::RackType::Motion:
+   case adlib::RackType::Filter:case adlib::RackType::Saturate:
    default:extraPanels[(size_t)slot]->setType(type);
     panel=extraPanels[(size_t)slot].get();break;
   }

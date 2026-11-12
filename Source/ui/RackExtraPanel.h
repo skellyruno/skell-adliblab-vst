@@ -121,7 +121,7 @@ public:
  EmptyRackSlot(const Theme::Palette&pal,int i):palette(pal),slot(i){
   setMouseCursor(juce::MouseCursor::PointingHandCursor);
   setWantsKeyboardFocus(true);
-  setTooltip("Add an effect to this empty slot");
+  setName("Add effect to slot "+juce::String(slot+1));
  }
  std::function<void(int)>onAdd;
  void mouseUp(const juce::MouseEvent&)override{if(onAdd)onAdd(slot);}

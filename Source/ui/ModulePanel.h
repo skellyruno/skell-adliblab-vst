@@ -12,11 +12,11 @@ public:
   g.setColour(palette.text.withAlpha(.64f));
   for(int y=0;y<3;++y)for(int x=0;x<2;++x)g.fillEllipse((float)x*6+6,(float)y*6+5,2.5f,2.5f);
  }
- void mouseDown(const juce::MouseEvent&e)override{start=e.getScreenX();if(onPreview)onPreview(0,true);}
- void mouseDrag(const juce::MouseEvent&e)override{if(onPreview)onPreview(e.getScreenX()-start,true);}
- void mouseUp(const juce::MouseEvent&e)override{int delta=e.getScreenX()-start;
+ void mouseDown(const juce::MouseEvent&e)override{start=juce::roundToInt(e.position.x);if(onPreview)onPreview(0,true);}
+ void mouseDrag(const juce::MouseEvent&e)override{if(onPreview)onPreview(juce::roundToInt(e.position.x)-start,true);}
+ void mouseUp(const juce::MouseEvent&e)override{int delta=juce::roundToInt(e.position.x)-start;
   if(onPreview)onPreview(delta,false);
-  if(std::abs(delta)>45&&onDrop)onDrop(delta);}
+  if(std::abs(delta)>=36&&onDrop)onDrop(delta);}
 private:int start=0;const Theme::Palette&palette;
 };
 // Retains ToggleButton/APVTS behavior, but renders a clean power symbol.
@@ -102,20 +102,20 @@ public:
  // The whole exposed header can be dragged horizontally except its buttons.
  void mouseDown(const juce::MouseEvent&e)override{
   if(e.mods.isPopupMenu()||e.position.y>53.f)return;
-  dragStart=e.getScreenX();dragging=true;
+  dragStart=juce::roundToInt(e.position.x);dragging=true;
   if(requestPreview)requestPreview(moduleId,0,true);
   repaint();
  }
  void mouseDrag(const juce::MouseEvent&e)override{
   if(dragging){
-   dragOffset=e.getScreenX()-dragStart;
+   dragOffset=juce::roundToInt(e.position.x)-dragStart;
    if(requestPreview)requestPreview(moduleId,dragOffset,true);
    repaint();
   }
  }
  void mouseUp(const juce::MouseEvent&e)override{
   if(!dragging)return;
-  int delta=e.getScreenX()-dragStart;dragging=false;dragOffset=0;repaint();
+  int delta=juce::roundToInt(e.position.x)-dragStart;dragging=false;dragOffset=0;repaint();
   if(requestPreview)requestPreview(moduleId,delta,false);
   if(std::abs(delta)>=36){if(requestReorder)requestReorder(moduleId,delta);}
   else if(requestReplace)requestReplace(moduleId);

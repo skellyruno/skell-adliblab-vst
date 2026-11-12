@@ -1,4 +1,5 @@
 #include "PluginEditor.h"
+#include "ui/RackDragMath.h"
 SkellAdlibLabEditor::Canvas::Canvas(SkellAdlibLabProcessor&p,SkellAdlibLabEditor&ed)
  :processor(p),editor(ed),palette(Theme::makePalette(p.getThemeIndex())),themeIndex(p.getThemeIndex()),
  header(p,palette),stack(p,palette),character(p,palette),throwPanel(p,palette),melt(p,palette),
@@ -242,7 +243,7 @@ void SkellAdlibLabEditor::Canvas::paintOverChildren(juce::Graphics&g){
  const auto order=processor.getModuleOrder();constexpr int positions[]={30,342,654,966};
  int from=-1;for(int i=0;i<4;++i)if(order[(size_t)i]==draggingSlot)from=i;
  if(from<0)return;
- const int dest=juce::jlimit(0,3,from+juce::roundToInt((float)draggingDelta/312.f));
+ const int dest=adlib::rackDragDestination(from,draggingDelta);
  const float ghostX=juce::jlimit(30.f,966.f,(float)positions[from]+(float)draggingDelta);
  const auto dragColour=palette.accent(draggingSlot);
  g.setColour(dragColour.withAlpha(.11f));g.fillRoundedRectangle(ghostX,91.f,289.f,453.f,11.f);
@@ -251,13 +252,11 @@ void SkellAdlibLabEditor::Canvas::paintOverChildren(juce::Graphics&g){
  g.setColour(dragColour);g.fillRoundedRectangle(marker,101.f,5.f,425.f,2.f);
 }
 void SkellAdlibLabEditor::Canvas::reorder(int slot,int displacement){
- auto order=processor.getModuleOrder();int from=0;for(int i=0;i<4;++i)if(order[(size_t)i]==slot)from=i;
+ auto order=processor.getModuleOrder();int from=-1;for(int i=0;i<4;++i)if(order[(size_t)i]==slot)from=i;
+ if(from<0)return;
  // Even a short, intentional grip drag moves to the adjacent slot;
  // longer drags can skip multiple modules.
- int direction=displacement>0?1:-1;
- int distance=std::abs(displacement);
- int steps=juce::jmax(1,(distance+156)/312);
- int to=juce::jlimit(0,3,from+direction*steps);if(from==to)return;
+ const int to=adlib::rackDragDestination(from,displacement);if(from==to)return;
  auto moved=order[(size_t)from];
  if(from<to)for(int i=from;i<to;++i)order[(size_t)i]=order[(size_t)(i+1)];
  else for(int i=from;i>to;--i)order[(size_t)i]=order[(size_t)(i-1)];

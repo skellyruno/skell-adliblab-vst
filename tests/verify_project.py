@@ -24,6 +24,10 @@ assert 'skellcore-vst-template.git' in cmake, 'Wrong SkellCore repo'
 assert 'eb56702153c4373799a4e8e2663e0f158c0115a6' in cmake
 assert 'SkellGuidedTourHeaders' not in cmake, 'Duplicate SkellCore checkout'
 assert 'add_subdirectory(SkellCore)' not in cmake, 'Stale bundled core must not build'
+assert 'b(l,"globalOn","Global Power",true)' in source
+assert 'globalBypass.setEnabled(p.globalOn)' in source
+assert (root/'Source/dsp/GlobalBypassFader.h').exists()
+assert 'tests/global_bypass.cpp' in workflow
 assert 'HostTempoClock.h' in header and 'updateTempoFromPlayhead' in source
 assert (root/'Source/dsp/PeakMeter.h').exists()
 workflow=(root/'.github/workflows/build.yml').read_text()

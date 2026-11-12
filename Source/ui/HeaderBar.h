@@ -23,18 +23,47 @@ public:
  }
 private:const Theme::Palette&palette;
 };
+// Global bypass uses a host-automatable APVTS button. The processor fades
+// from effected signal to *unaltered input*, independent of Mix/Gain.
+class GlobalPowerButton final:public juce::ToggleButton {
+public:
+ explicit GlobalPowerButton(const Theme::Palette&pal):palette(pal){
+  setButtonText("");setTooltip("Global power: bypass all AdlibLab processing");
+ }
+ void paintButton(juce::Graphics&g,bool hover,bool pressed)override{
+  const auto r=getLocalBounds().toFloat().reduced(1.f);
+  g.setColour(pressed?palette.background:palette.raised);
+  g.fillRoundedRectangle(r,8.f);
+  const bool active=getToggleState();
+  const auto glow=palette.stack;
+  g.setColour(active?glow.withAlpha(hover?1.f:.72f):palette.border);
+  g.drawRoundedRectangle(r.reduced(.7f),7.f,active?1.6f:1.f);
+  const auto centre=r.getCentre();
+  const float radius=8.f;
+  juce::Path arc;
+  constexpr int count=32;
+  for(int i=0;i<=count;++i){
+   const float a=.73f+(juce::MathConstants<float>::twoPi-1.46f)*(float)i/count;
+   const float x=centre.x+radius*std::sin(a),y=centre.y-radius*std::cos(a);
+   if(i==0)arc.startNewSubPath(x,y);else arc.lineTo(x,y);
+  }
+  g.setColour(active?glow:palette.muted);
+  g.strokePath(arc,juce::PathStrokeType(2.15f,juce::PathStrokeType::curved,juce::PathStrokeType::rounded));
+  g.drawLine(centre.x,centre.y-10.f,centre.x,centre.y-1.f,2.2f);
+  if(active){g.setColour(glow.withAlpha(.19f));g.fillEllipse(centre.x-3.f,centre.y-2.f,6.f,6.f);}
+ }
+private:const Theme::Palette&palette;
+};
 class HeaderBar final:public juce::Component {
 public:
  explicit HeaderBar(SkellAdlibLabProcessor&p,const Theme::Palette&pal)
- :processor(p),palette(pal),skull(pal),settings(pal),mixAtt(p.parameters,"mix",mix),outputAtt(p.parameters,"outputGain",output){
+ :processor(p),palette(pal),skull(pal),settings(pal),globalPower(pal),powerAtt(p.parameters,"globalOn",globalPower){
   addAndMakeVisible(skull);skull.setBounds(11,9,48,48);
   skull.onClick=[this]{if(onThemeCycle)onThemeCycle();};
   skull.onThemeChosen=[this](int theme){if(onThemeSelect)onThemeSelect(theme);};
-  setup(mix,palette.stack);setup(output,palette.melt);
-  addAndMakeVisible(mix);mix.setBounds(906,6,64,55);
-  addAndMakeVisible(output);output.setBounds(980,6,64,55);
   preset.setButtonText(processor.parameters.state.getProperty("presetName","INIT PATCH").toString());preset.setBounds(353,18,326,34);preset.onClick=[this]{if(onPresetClicked)onPresetClicked();};addAndMakeVisible(preset);
   shuffle.setButtonText("SHUFFLE");shuffle.setBounds(690,18,100,34);shuffle.onClick=[this]{shufflePatch();};addAndMakeVisible(shuffle);
+  globalPower.setBounds(1144,17,38,36);addAndMakeVisible(globalPower);
   settings.setBounds(1190,17,42,36);settings.onClick=[this]{showSettings();};addAndMakeVisible(settings);
  }
  std::function<void()> onThemeCycle;
@@ -43,33 +72,28 @@ public:
  std::function<void()> onShowTutorial;
  void refreshPresetLabel(){preset.setButtonText(processor.parameters.state.getProperty("presetName","INIT PATCH").toString());}
  juce::String getPresetLabel()const{return preset.getButtonText();}
- void refreshTheme(){setup(mix,palette.stack);setup(output,palette.melt);skull.repaint();repaint();}
+ void refreshTheme(){skull.repaint();globalPower.repaint();settings.repaint();repaint();}
  void paint(juce::Graphics&g)override{
   const auto r=getLocalBounds().toFloat();
   g.setGradientFill(juce::ColourGradient(palette.raised.withAlpha(.82f),0.f,0.f,
                                         palette.surface,r.getRight(),r.getBottom(),false));
   g.fillRoundedRectangle(r.reduced(.5f),11.f);
   g.setColour(palette.border.withAlpha(.85f));g.drawRoundedRectangle(r.reduced(.9f),10.5f,1.f);
-  g.setColour(palette.stack.withAlpha(.88f));g.fillRoundedRectangle(69.f,58.f,180.f,2.f,1.f);
-  g.setColour(palette.muted);g.setFont(Theme::mono(10));
-  g.drawText("SKELL AUDIO   /   VOCAL DESIGN",72,7,270,17,juce::Justification::left);
-  // Explicit geometry is stable even when the headless font resolver has no
-  // glyph advance metrics (which previously made ADLIB disappear entirely).
-  g.setFont(Theme::display(28.f));g.setColour(palette.text);
-  g.drawText("ADLIB",70,23,110,34,juce::Justification::left);
-  g.setColour(palette.stack);g.drawText("LAB",155,23,76,34,juce::Justification::left);
-  g.setColour(palette.muted);g.setFont(Theme::mono(9));
-  g.drawText(palette.name,242,36,86,16,juce::Justification::left);
-  g.setColour(palette.border.withAlpha(.85f));
-  g.drawVerticalLine(347,15.f,55.f);g.drawVerticalLine(802,15.f,55.f);g.drawVerticalLine(1064,15.f,55.f);
-  g.setColour(palette.muted);g.setFont(Theme::mono(10));
-  g.drawText("MIX",911,53,54,12,juce::Justification::centred);
-  g.drawText("OUTPUT",982,53,60,12,juce::Justification::centred);
-  g.drawText("INPUT",1076,9,72,15,juce::Justification::centredLeft);
+  // Single-word ADLIBLAB mark; the green LAB suffix remains distinct.
+  g.setFont(Theme::display(27.f));g.setColour(palette.text);
+  g.drawText("ADLIB",70,14,104,33,juce::Justification::left);
+  g.setColour(palette.stack);g.drawText("LAB",165,14,74,33,juce::Justification::left);
+  g.setColour(palette.muted);g.setFont(Theme::mono(9.f));
+  g.drawText("SCULPT THE VOICES AFTER DARK",72,48,272,13,juce::Justification::left);
+  g.setColour(palette.border.withAlpha(.82f));
+  g.drawVerticalLine(347,15.f,55.f);g.drawVerticalLine(802,15.f,55.f);
+  g.drawVerticalLine(1135,15.f,55.f);
+  g.setColour(palette.muted);g.setFont(Theme::mono(10.f));
+  g.drawText("INPUT",1029,11,95,14,juce::Justification::left);
   const int lit=juce::roundToInt(12.f*juce::jlimit(0.f,1.f,processor.getInputLevel()));
   for(int i=0;i<12;++i){
    g.setColour((i<lit?(i>9?palette.chaos:palette.melt):palette.border).withAlpha(i<lit?1.f:.5f));
-   g.fillRoundedRectangle(1076.f+i*7.25f,31.f,5.2f,7.f,1.4f);
+   g.fillRoundedRectangle(1029.f+i*7.25f,31.f,5.2f,7.f,1.4f);
   }
  }
 
@@ -183,7 +207,6 @@ public:
  }
 
 private:
- static void setup(juce::Slider&s,juce::Colour colour){s.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);s.setTextBoxStyle(juce::Slider::NoTextBox,false,0,0);s.setColour(juce::Slider::rotarySliderFillColourId,colour);}
  void parameter(const char*id,float value){
   if(auto*r=dynamic_cast<juce::RangedAudioParameter*>(processor.parameters.getParameter(id))){r->beginChangeGesture();r->setValueNotifyingHost(r->convertTo0to1(value));r->endChangeGesture();}
  }
@@ -233,7 +256,7 @@ private:
    });
  }
  juce::MemoryBlock undoShuffleSnapshot;
- SkellAdlibLabProcessor&processor;const Theme::Palette&palette;SkullThemeButton skull;GearButton settings;juce::Slider mix,output;
- juce::AudioProcessorValueTreeState::SliderAttachment mixAtt,outputAtt;
+ SkellAdlibLabProcessor&processor;const Theme::Palette&palette;SkullThemeButton skull;GearButton settings;GlobalPowerButton globalPower;
+ juce::AudioProcessorValueTreeState::ButtonAttachment powerAtt;
  juce::TextButton preset,shuffle;std::unique_ptr<juce::FileChooser>chooser;
 };

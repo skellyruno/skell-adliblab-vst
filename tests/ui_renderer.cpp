@@ -104,6 +104,7 @@ int main(int argc,char** argv){
    editor.setPresetMenuForScreenshot(scene.mode==3);
    editor.setEffectPickerForScreenshot(scene.mode==4);
    editor.setDragPreviewForScreenshot(scene.mode==6);
+   param(processor,"globalOn",scene.mode==1?0.f:1.f);
    param(processor,"charOn",scene.mode==1?0.f:1.f);
    param(processor,"throwOn",scene.mode==1?0.f:1.f);
    param(processor,"charType",scene.mode==3?1.f:0.f);

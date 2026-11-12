@@ -4,20 +4,20 @@
 
 **Skell AdlibLab** — an experimental Windows VST3 adlib designer for JUCE 8 / CMake. Derived from the supplied `skell-vst-template-main(1).zip` starter. The GitHub repository also contains an existing SkellCore foundation; the AdlibLab CMake target preserves and links the reusable SkellCore DSP/UI targets without replacing that shared library.
 
-> **Development status: v0.5 (experimental).** DSP regression checks pass locally and the Windows VST3 builds via GitHub Actions. This is not yet FL Studio host-validated or production certified. Advanced formant preservation and spectral-envelope morphing remain unimplemented.
+> **Development status: v0.10.2 (experimental).** Windows VST3, DSP sanitizers and real JUCE screenshot regressions are the release gates. This is not yet FL Studio host-validated or production certified. Advanced independent formant preservation and spectral-envelope morphing remain unimplemented.
 
 ## Interface & features implemented
 
 - Responsive 1280 × 800 dark interface with original ADLIBLAB wordmark, distinct STACK / CHARACTER / THROW / MELT accent colors, rotary controls, clip pads, a piano keyboard, and orange CHAOS macro. Scales as a fixed-aspect window.
-- Drag a module's small handle horizontally and release to reorder the four module panels. The router applies a roughly 30 ms wet-to-dry-to-wet bridge around the order switch, reducing discontinuities (not a dual-router crossfade).
+- Drag an effect's header horizontally and release to reorder the four slots; click its title to change the effect, X to remove and the illuminated dot to bypass. The router applies a roughly 30 ms wet-to-dry-to-wet bridge around the order switch, reducing discontinuities (not a dual-router crossfade).
 - STACK: 2–8 additive/detuned pitch-processed voices, per-voice draggable pan/pitch positions and time offset, key/scale-aware semitone quantisation, chaos re-roll on detected onsets. Current pitch engine is a two-grain overlapped resampler; NOT a high-quality identity-phase-locked phase vocoder. Independent formant shaping, independent formant spectral shaping is future work.
 - CHARACTER: six characters (Alien, Robot, Demon, Cartoon, Ghost, Gremlin) implemented with economical modulation, waveshaping, frequency-dependent colour, glide of intensity, bit-depth reduction, and sample hold. This is a creative-effects baseline, not the full independent-formant set specified.
 - THROW: onset/phrase-end detection, four overlapping prerecorded echo voices with cached per-repeat coefficients, interpolated pitch playback and de-clicked edges, host-BPM divisions (120 BPM fallback), repeating with feedback attenuation, per-repeat pitch resampling, reverse and ping-pong with filter sweep. It currently captures the last ~280 ms, with a lower-complexity phrase detector and without a true lookahead. Manual trigger available by button or MIDI (when in Manual mode).
 - MELT: load WAV/AIFF/FLAC audio (5 seconds maximum), 24-band filter-bank vocoding, envelope-followed sample re-pitching, and a morph-inspired blend. This is NOT STFT spectral-envelope morphing yet.
 - EIGHT CLIP PADS: drag audio onto a pad; right-click to load, clear, audition, or record the next detected phrase; Shift-click also arms recording. Click to audition. Loaded clips can be played from routed MIDI notes with click-free attack/release, fair 16-voice stealing and pass through the chain. Keyboard C3–C5 supports mouse-down, drag-to-new-note and release audition. Recording has a five-second cap and publishes the finished clip from the GUI timer, not the realtime audio callback.
 - CHAOS: deterministic seeded re-roll with seed lock, re-roll button, and onset-responsive variations in STACK, CHARACTER, THROW, and MELT.
-- APVTS automation: 49 user parameters, with unautomated module order stored in state. Full patch and in-memory WAV clip data are serialized into host state or exported to `.skad` patch files.
-- Global wet/dry mix, output gain, stereo width, and an optional safety **soft clip**. The soft clip is not a true-peak limiter.
+- APVTS automation: per-effect and global controls, with the module order and rack types stored in state. Full patch and in-memory WAV clip data are serialized into host state or exported to `.skad` patch files.
+- Bottom-right **WIDTH / MIX / GAIN** deck (MIX is wet/dry, GAIN is dB), plus the header global POWER control with a 15ms dry-bypass transition and optional safety **soft clip**. The soft clip is not a true-peak limiter.
 
 ## Build
 

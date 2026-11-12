@@ -28,7 +28,13 @@ for width in (800,1024,1280,1600,1920):
   assert (x+w)*scale <= width+.01
   assert (y+h)*scale <= height+.6
 for a,b in zip(xs,xs[1:]):assert b-(a+290)>=20
-assert 'DragGrip' in modules and 'requestReorder' in modules
+assert 'DragGrip' not in modules and 'requestReorder' in modules and 'mouseDrag' in modules
+assert 'remove.setBounds(217,11,27,28)' in modules
+assert 'on.setBounds(249,11,29,29)' in modules
+assert 'globalPower.setBounds(1144,17,38,36)' in header
+assert 'setup(mix' not in header and 'mixAtt' not in header
+assert 'mix.setBounds(1109,606,56,62)' in canvas
+assert 'widthReadout' in canvas and 'mixReadout' in canvas and 'gainReadout' in canvas
 assert 'updateBypassVisual' in modules and 'updateBypassVisual()' in canvas
 assert 'EffectPickerView' in (root/'Source/ui/EffectPickerView.h').read_text()
 assert 'EmptyRackSlot' in (root/'Source/ui/RackExtraPanel.h').read_text()

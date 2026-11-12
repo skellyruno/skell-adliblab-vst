@@ -36,7 +36,7 @@ private:
  class Canvas final:public juce::Component,private juce::Slider::Listener {
  public:
   Canvas(SkellAdlibLabProcessor&,SkellAdlibLabEditor&);
-  ~Canvas()override{width.removeListener(this);gain.removeListener(this);}
+  ~Canvas()override{width.removeListener(this);mix.removeListener(this);gain.removeListener(this);}
   void paint(juce::Graphics&)override;
   void paintOverChildren(juce::Graphics&)override;
   void reorder(int slot,int displacement);
@@ -77,10 +77,10 @@ private:
   ClipBankView bank;
   MiniKeyboard keyboard;
   PresetMenuView presetMenu;
-  juce::Slider width,gain;
-  juce::Label widthReadout,gainReadout;
+  juce::Slider width,mix,gain;
+  juce::Label widthReadout,mixReadout,gainReadout;
   juce::ToggleButton limiter,formant,velIntensity,velTail,reverse;
-  juce::AudioProcessorValueTreeState::SliderAttachment widthAtt,gainAtt;
+  juce::AudioProcessorValueTreeState::SliderAttachment widthAtt,mixAtt,gainAtt;
   juce::AudioProcessorValueTreeState::ButtonAttachment limiterAtt,formantAtt,velIntensityAtt,velTailAtt,reverseAtt;
   std::array<ModulePanel*,4>modules;
  }canvas;

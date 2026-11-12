@@ -3,54 +3,31 @@
 #include "../PluginProcessor.h"
 #include "VoiceMap.h"
 #include <functional>
-class DragGrip final:public juce::Component {
-public:
- std::function<void(int)>onDrop;
- std::function<void(int,bool)>onPreview;
- explicit DragGrip(const Theme::Palette&pal):palette(pal){}
- void paint(juce::Graphics&g)override{
-  g.setColour(palette.text.withAlpha(.64f));
-  for(int y=0;y<3;++y)for(int x=0;x<2;++x)g.fillEllipse((float)x*6+6,(float)y*6+5,2.5f,2.5f);
- }
- void mouseDown(const juce::MouseEvent&e)override{start=juce::roundToInt(e.position.x);if(onPreview)onPreview(0,true);}
- void mouseDrag(const juce::MouseEvent&e)override{if(onPreview)onPreview(juce::roundToInt(e.position.x)-start,true);}
- void mouseUp(const juce::MouseEvent&e)override{int delta=juce::roundToInt(e.position.x)-start;
-  if(onPreview)onPreview(delta,false);
-  if(std::abs(delta)>=36&&onDrop)onDrop(delta);}
-private:int start=0;const Theme::Palette&palette;
-};
 // Retains ToggleButton/APVTS behavior, but renders a clean power symbol.
 // Automatable on/off control; the lit ring is visibly different from OFF.
 class ModulePowerButton final:public juce::ToggleButton {
 public:
  ModulePowerButton(const Theme::Palette&pal,int id):palette(pal),moduleId(id){
-  setTooltip("Power: enable or bypass this effect");
+  setTooltip("Effect power: lit is active, black is bypassed");
  }
  void paintButton(juce::Graphics&g,bool hover,bool pressed)override{
-  auto r=getLocalBounds().toFloat().reduced(1.f);
-  const bool enabled=getToggleState();
+  const auto r=getLocalBounds().toFloat().reduced(.7f);
   const auto accent=palette.accent(moduleId);
-  g.setColour(pressed?palette.background:palette.raised);
-  g.fillRoundedRectangle(r,8.f);
-  g.setColour(enabled?accent.withAlpha(hover?1.f:.77f):palette.muted.withAlpha(.70f));
-  g.drawRoundedRectangle(r.reduced(.5f),7.5f,enabled?1.4f:1.f);
+  const bool active=getToggleState();
   const auto centre=r.getCentre();
-  const float radius=7.f;
-  juce::Path powerArc;
-  constexpr int segments=36;
-  for(int i=0;i<=segments;++i){
-   const float radians=.76f+(juce::MathConstants<float>::twoPi-1.52f)*(float)i/(float)segments;
-   const float px=centre.x+radius*std::sin(radians);
-   const float py=centre.y-radius*std::cos(radians);
-   if(i==0)powerArc.startNewSubPath(px,py);else powerArc.lineTo(px,py);
+  // Lighted dot when enabled, near-black when bypassed.
+  g.setColour(palette.background);g.fillEllipse(r.reduced(2.f));
+  g.setColour(active?accent.withAlpha(hover?1.f:.72f):palette.border.withAlpha(.70f));
+  g.drawEllipse(r.reduced(2.f),active?1.7f:1.15f);
+  if(active){
+   g.setColour(accent.withAlpha(hover?.24f:.14f));
+   g.fillEllipse(centre.x-9.f,centre.y-9.f,18.f,18.f);
   }
-  g.setColour(enabled?accent:palette.muted.withAlpha(.82f));
-  g.strokePath(powerArc,juce::PathStrokeType(enabled?2.5f:2.1f,
-                        juce::PathStrokeType::curved,juce::PathStrokeType::rounded));
-  g.drawLine(centre.x,centre.y-9.f,centre.x,centre.y-1.5f,enabled?2.5f:2.1f);
-  if(enabled){g.setColour(accent.withAlpha(hover?.28f:.16f));g.fillEllipse(centre.x-3.f,centre.y-2.f,6.f,6.f);}
+  g.setColour(active?accent:juce::Colour(0xff050607));
+  g.fillEllipse(centre.x-5.3f,centre.y-5.3f,10.6f,10.6f);
+  if(active){g.setColour(palette.text.withAlpha(.75f));g.fillEllipse(centre.x-2.1f,centre.y-2.1f,2.6f,2.6f);}
  }
-private:const Theme::Palette&palette;int moduleId;
+ private:const Theme::Palette&palette;int moduleId;
 };
 // A vector close icon stays legible at the minimum editor size. It preserves
 // the original click/callback semantics while enlarging the target to 26px.
@@ -82,13 +59,11 @@ public:
  using ButtonAttachment=juce::AudioProcessorValueTreeState::ButtonAttachment;
  using ComboAttachment=juce::AudioProcessorValueTreeState::ComboBoxAttachment;
  ModulePanel(SkellAdlibLabProcessor&p,const Theme::Palette&pal,int id,juce::String name,const char*enabled)
-  :processor(p),palette(pal),moduleId(id),title(std::move(name)),grip(palette),on(palette,id),remove(palette){
-   grip.onDrop=[this](int x){if(requestReorder)requestReorder(moduleId,x);};
-   grip.onPreview=[this](int dx,bool active){if(requestPreview)requestPreview(moduleId,dx,active);};
-   addAndMakeVisible(grip);grip.setBounds(249,11,29,28);
-   on.setButtonText("");addAndMakeVisible(on);on.setBounds(207,10,31,31);
-   on.onClick=[this]{updateBypassVisual();};
-   remove.setBounds(176,11,27,28);
+  :processor(p),palette(pal),moduleId(id),title(std::move(name)),on(palette,id),remove(palette){
+   // Bare header is draggable; no dotted grip chrome.
+  on.setButtonText("");addAndMakeVisible(on);on.setBounds(249,11,29,29);
+  on.onClick=[this]{updateBypassVisual();};
+   remove.setBounds(217,11,27,28);
    remove.setTooltip("Remove effect (shows + empty slot)");
    remove.onClick=[this]{if(requestRemove)requestRemove(moduleId);};
    addAndMakeVisible(remove);
@@ -133,7 +108,7 @@ public:
   lastEnabled=enabled?1:0;
   for(int i=0;i<getNumChildComponents();++i){
    auto* child=getChildComponent(i);
-   if(child!=&on&&child!=&grip&&child!=&remove)child->setAlpha(enabled?1.f:.80f);
+   if(child!=&on&&child!=&remove)child->setAlpha(enabled?1.f:.80f);
   }
   repaint();
  }
@@ -157,7 +132,9 @@ public:
   g.fillRoundedRectangle(r,11.f);
   g.setColour(palette.background.darker(.3f));g.drawRoundedRectangle(r,11.f,2.f);
   g.setColour(palette.border.brighter(.20f).withAlpha(.98f));
-  g.drawRoundedRectangle(r.reduced(1.25f),10.f,1.2f);
+  g.drawRoundedRectangle(r.reduced(1.15f),10.f,1.75f);
+  g.setColour(accent().withAlpha(.52f));
+  g.drawRoundedRectangle(r.reduced(2.4f),9.f,1.25f);
   g.setGradientFill(juce::ColourGradient(accent().withAlpha(.15f),r.getTopLeft(),
                                         accent().withAlpha(.055f),juce::Point<float>(r.getRight(),53.f),false));
   g.fillRoundedRectangle(r.withHeight(52.f),10.f);
@@ -166,16 +143,11 @@ public:
   g.setColour(accent());g.fillRoundedRectangle(2.f,4.f,3.f,46.f,1.3f);
   g.fillRoundedRectangle(18.f,52.f,35.f,2.f,1.f);
   g.setColour(palette.text);g.setFont(Theme::display(17));
-  g.drawFittedText(title,19,11,157,28,juce::Justification::left,1);
-  if(on.getToggleState()){
-   // Effect name is a replace action; X independently removes the slot.
-  }else{
-   g.setColour(palette.background.withAlpha(.07f));g.fillRoundedRectangle(1.f,54.f,288.f,399.f,9.f);
-   g.setColour(palette.muted);g.setFont(Theme::mono(10));
-   g.drawText("OFF",148,36,44,14,juce::Justification::right);
+  g.drawFittedText(title,19,11,190,28,juce::Justification::left,1);
+  if(!on.getToggleState()){
+   g.setColour(palette.background.withAlpha(.08f));
+   g.fillRoundedRectangle(1.f,54.f,288.f,399.f,9.f);
   }
-  g.setColour(palette.muted);g.setFont(Theme::mono(9));
-  // Six-dot grip remains the drag affordance; extra microtext removed.
  }
 
 protected:
@@ -240,7 +212,7 @@ private:
    return;
   }
  }
- DragGrip grip;ModulePowerButton on;RemoveEffectButton remove;int lastEnabled=-1;
+ ModulePowerButton on;RemoveEffectButton remove;int lastEnabled=-1;
  bool dragging=false;int dragStart=0,dragOffset=0;
  juce::OwnedArray<juce::Slider>sliders;juce::OwnedArray<juce::Label>labels,readouts;
  std::vector<juce::String> readoutParams;

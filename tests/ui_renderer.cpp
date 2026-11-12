@@ -76,11 +76,11 @@ int main(int argc,char** argv){
     scene.width=size.width;scene.height=size.height;scene.theme=theme;scene.mode=state;
     options.scenes.push_back(scene);
    }
-  if(theme==0)
-   options.scenes.push_back({"guided-tour-minimum",800,500,0,4,false});
+  options.scenes.push_back({"guided-tour-minimum",800,500,theme,7,false});
+  options.scenes.push_back({"guided-tour-design",1280,800,theme,7,false});
   options.configure=[&](const auto& scene){
    editor.dismissGuidedTourForScreenshot();
-   if(scene.mode==4 && !editor.showGuidedTourForScreenshot()){
+   if(scene.mode==7 && !editor.showGuidedTourForScreenshot()){
     std::fprintf(stderr,"Guided tour failed to display on actual AdlibLab editor\n");
     ++failures;
    }
@@ -100,15 +100,38 @@ int main(int argc,char** argv){
       :juce::MidiMessage::noteOff(1,60),0);
    juce::AudioBuffer<float> audio(2,64);audio.clear();processor.processBlock(audio,midi);
   };
-  options.inspect=[&]{return inspect(editor);};
+  options.inspect=[&]{
+   auto issues=inspect(editor);
+   // Verify the actual SkellCore tour control bounds, not a mock layout.
+   for(int i=0;i<editor.getNumChildComponents();++i){
+    const auto* overlay=editor.getChildComponent(i);
+    if(overlay->getComponentID()!="skellcore-guided-tour"||!overlay->isVisible())continue;
+    auto* tour=dynamic_cast<const skellcore::ui::GuidedTourOverlay*>(overlay);
+    if(tour==nullptr){issues.add("Guided Tour must use shared SkellCore overlay");break;}
+    const auto card=tour->informationBounds();
+    juce::Array<juce::Rectangle<int>> bounds;
+    for(int n=0;n<overlay->getNumChildComponents();++n){
+     const auto* control=dynamic_cast<const juce::TextButton*>(overlay->getChildComponent(n));
+     if(control==nullptr)continue;
+     const auto box=control->getBounds();
+     if(box.getWidth()>63||box.getHeight()>26||box.getHeight()<19||!card.contains(box))
+      issues.add("Guided Tour button is oversized or outside card: "+box.toString());
+     for(const auto& previous:bounds)if(previous.intersects(box))
+      issues.add("Guided Tour buttons overlap");
+     bounds.add(box);
+    }
+    if(bounds.size()!=3)issues.add("Expected BACK, SKIP, NEXT controls");
+   }
+   return issues;
+  };
   options.mustDiffer={{"main-minimum","bypass-minimum"},
                       {"main-design","selected-design"},
                       {"main-design","preset-design"},
                       {"main-design","picker-design"},
                       {"main-design","empty-design"},
                       {"main-design","drag-design"}};
-  if(theme==0)
-    options.mustDiffer.push_back({"main-minimum","guided-tour-minimum"});
+  options.mustDiffer.push_back({"main-minimum","guided-tour-minimum"});
+  options.mustDiffer.push_back({"main-design","guided-tour-design"});
   const auto report=skellcore::ui::headless::render(editor,folder,options);
   captured+=report.captured;
   editor.dismissGuidedTourForScreenshot();
@@ -130,7 +153,7 @@ int main(int argc,char** argv){
   }
  }
  if(!skellcore::ui::headless::writePng(overview,out.getChildFile("contact-sheet.png")))++failures;
- if(captured!=69){std::fprintf(stderr,"Expected 69 actual UI PNGs, got %d\n",captured);++failures;}
+ if(captured!=76){std::fprintf(stderr,"Expected 76 actual UI PNGs, got %d\n",captured);++failures;}
  std::printf("SkellCore real editor: %d scenes, %d errors\n",captured,failures);
  processor.releaseResources();
  return failures==0?0:1;

@@ -44,6 +44,7 @@ Layout SkellAdlibLabProcessor::createLayout(){
  f(l,"mix","Mix",0,1,.65f);f(l,"outputGain","Output Gain",-12,12,0);
  f(l,"width","Stereo Width",0,2,1);f(l,"chaos","Chaos",0,1,.25f);
  b(l,"chaosLock","Chaos Lock",false);b(l,"safetyLimiter","Safety Soft Clip",true);
+ b(l,"globalOn","Global Power",true);
  c(l,"latencyMode","Quality Mode",{"Low","Normal","High Quality"},0);
  b(l,"stackOn","Stack Enabled",true);c(l,"stackVoices","Stack Voices",{"2","3","4","5","6","7","8"},1);
  f(l,"stackSpread","Stack Spread (cents)",0,1200,30,1);
@@ -151,6 +152,7 @@ void SkellAdlibLabProcessor::prepareToPlay(double sr,int){
  mixSmooth.reset(sr,.025);gainSmooth.reset(sr,.025);
  mixSmooth.setCurrentAndTargetValue(parameters.getRawParameterValue("mix")->load());
  gainSmooth.setCurrentAndTargetValue(juce::Decibels::decibelsToGain(parameters.getRawParameterValue("outputGain")->load()));
+ globalBypass.prepare(sr,parameters.getRawParameterValue("globalOn")->load()>=.5f);
  // Pitch-shifted STACK voices are delayed intentionally, like a doubler. Dry remains zero-latency.
  setLatencySamples(0);
 }
@@ -160,7 +162,7 @@ adlib::Params SkellAdlibLabProcessor::loadParams()const{
  const auto val=[this](const char*id)->float{return parameters.getRawParameterValue(id)->load();};
  const auto yes=[&](const char*id)->bool{return val(id)>=.5f;};
  const auto integer=[&](const char*id)->int{return (int)std::lround(val(id));};
- p.mix=val("mix");p.outputGain=val("outputGain");p.width=val("width");p.chaos=val("chaos");p.chaosLock=yes("chaosLock");p.safetyLimiter=yes("safetyLimiter");p.latencyMode=integer("latencyMode");
+ p.mix=val("mix");p.outputGain=val("outputGain");p.width=val("width");p.chaos=val("chaos");p.chaosLock=yes("chaosLock");p.safetyLimiter=yes("safetyLimiter");p.globalOn=yes("globalOn");p.latencyMode=integer("latencyMode");
  p.stackOn=yes("stackOn");p.stackVoices=integer("stackVoices")+2;p.stackSpread=val("stackSpread");p.stackFormant=val("stackFormant");p.stackTime=val("stackTime");p.stackWidth=val("stackWidth");p.stackChaosAmt=val("stackChaosAmt");p.stackRerollOnHit=yes("stackRerollOnHit");p.stackScaleLock=yes("stackScaleLock");p.stackKey=integer("stackKey");p.stackScale=integer("stackScale");
  p.charOn=yes("charOn");p.charType=integer("charType");p.charIntensity=val("charIntensity");p.charFormant=val("charFormant");p.charGlide=val("charGlide");p.charCrush=val("charCrush");p.charDetune=val("charDetune");
  p.throwOn=yes("throwOn");p.throwMode=integer("throwMode");p.throwDiv=integer("throwDiv");p.throwFeedback=val("throwFeedback");p.throwRepeats=integer("throwRepeats");p.throwFilterStart=val("throwFilterStart");p.throwFilterEnd=val("throwFilterEnd");p.throwPitchPerRepeat=val("throwPitchPerRepeat");p.throwDuck=val("throwDuck");p.throwReverse=yes("throwReverse");p.throwPingPong=yes("throwPingPong");
@@ -217,6 +219,7 @@ void SkellAdlibLabProcessor::processBlock(juce::AudioBuffer<float>&buffer,juce::
  const auto*sample=meltSample.load(std::memory_order_acquire);
  mixSmooth.setTargetValue(p.mix);
  gainSmooth.setTargetValue(juce::Decibels::decibelsToGain(p.outputGain));
+ globalBypass.setEnabled(p.globalOn);
  float*left=buffer.getWritePointer(0);
  float*right=channels>1?buffer.getWritePointer(1):nullptr;
  float inMeter=0,outMeter=0;
@@ -295,7 +298,12 @@ void SkellAdlibLabProcessor::processBlock(juce::AudioBuffer<float>&buffer,juce::
   // them to the host. ScopedNoDenormals guards internal recursive DSP.
   if(!std::isfinite(output.l)||std::abs(output.l)<1.e-20f)output.l=0.f;
   if(!std::isfinite(output.r)||std::abs(output.r)<1.e-20f)output.r=0.f;
-  left[i]=output.l;if(right)right[i]=output.r;
+  // One coefficient per stereo sample prevents left/right phase differences.
+   // Global OFF bypasses Width, Mix, Gain and soft clip as true unity dry.
+   globalBypass.next();
+   output.l=globalBypass.blend(dry.l,output.l);
+   output.r=globalBypass.blend(dry.r,output.r);
+   left[i]=output.l;if(right)right[i]=output.r;
   outMeter=juce::jmax(outMeter,juce::jmax(std::abs(output.l),std::abs(output.r)));
  }
  // Block-size-independent peak decay gives the header/output meters a stable

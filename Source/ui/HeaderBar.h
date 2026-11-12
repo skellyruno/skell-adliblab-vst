@@ -82,7 +82,7 @@ public:
   // Single-word ADLIBLAB mark; the green LAB suffix remains distinct.
   g.setFont(Theme::display(27.f));g.setColour(palette.text);
   g.drawText("ADLIB",70,14,104,33,juce::Justification::left);
-  g.setColour(palette.stack);g.drawText("LAB",165,14,74,33,juce::Justification::left);
+  g.setColour(palette.stack);g.drawText("LAB",149,14,74,33,juce::Justification::left);
   g.setColour(palette.muted);g.setFont(Theme::mono(9.f));
   g.drawText("SCULPT THE VOICES AFTER DARK",72,48,272,13,juce::Justification::left);
   g.setColour(palette.border.withAlpha(.82f));

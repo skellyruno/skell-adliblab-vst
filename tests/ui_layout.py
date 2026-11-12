@@ -29,7 +29,10 @@ for width in (800,1024,1280,1600,1920):
   assert (y+h)*scale <= height+.6
 for a,b in zip(xs,xs[1:]):assert b-(a+290)>=20
 assert 'DragGrip' in modules and 'requestReorder' in modules
-assert 'updateBypassVisual' in modules and 'module->updateBypassVisual()' in canvas
+assert 'updateBypassVisual' in modules and 'updateBypassVisual()' in canvas
+assert 'EffectPickerView' in (root/'Source/ui/EffectPickerView.h').read_text()
+assert 'EmptyRackSlot' in (root/'Source/ui/RackExtraPanel.h').read_text()
+assert 'paintOverChildren' in canvas, 'Drag ghost must render in actual JUCE editor'
 assert 'JucePlugin_VersionString' in canvas, 'UI footer must track the real VST3 version'
 assert 'ADLIBLAB 0.3' not in canvas, 'Stale release label'
 print('UI layout contract PASS: 5 aspect-locked sizes, all top-level regions in bounds')

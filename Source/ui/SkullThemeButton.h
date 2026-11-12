@@ -28,30 +28,50 @@ public:
   const auto shape=juce::AffineTransform::scale(bounds.getWidth()/48.f,bounds.getHeight()/48.f)
        .translated(bounds.getX(),bounds.getY());
   g.addTransform(shape);
-  // Angular skull mark: replace the old rounded cartoon head, keeping the
-  // clickable theme action and all skins. Pure JUCE paths, no external asset.
-  juce::Path bone;
-  bone.startNewSubPath(15.f,8.f);bone.lineTo(33.f,8.f);
-  bone.lineTo(40.f,14.f);bone.lineTo(40.f,23.f);bone.lineTo(35.f,29.f);
-  bone.lineTo(35.f,35.f);bone.lineTo(31.f,41.f);bone.lineTo(17.f,41.f);
-  bone.lineTo(13.f,35.f);bone.lineTo(13.f,29.f);bone.lineTo(8.f,23.f);
-  bone.lineTo(8.f,14.f);bone.closeSubPath();
-  g.setColour(pressed?accent:palette.text.withAlpha(.96f));g.fillPath(bone);
-  g.setColour(accent.withAlpha(hover?.90f:.46f));g.strokePath(bone,juce::PathStrokeType(1.1f));
-  juce::Path sockets;
-  sockets.startNewSubPath(13.f,22.f);sockets.lineTo(22.f,23.f);
-  sockets.lineTo(20.5f,30.f);sockets.lineTo(15.5f,28.5f);sockets.closeSubPath();
-  sockets.startNewSubPath(35.f,22.f);sockets.lineTo(26.f,23.f);
-  sockets.lineTo(27.5f,30.f);sockets.lineTo(32.5f,28.5f);sockets.closeSubPath();
-  sockets.startNewSubPath(24.f,29.f);sockets.lineTo(20.8f,34.f);
-  sockets.lineTo(27.2f,34.f);sockets.closeSubPath();
-  g.setColour(palette.background);g.fillPath(sockets);
-  g.setColour(palette.background.withAlpha(.88f));
-  for(float x: {20.f,24.f,28.f})g.drawLine(x,36.f,x,40.f,1.25f);
-  g.setColour(accent.withAlpha(.85f));
-  g.drawLine(15.f,17.f,21.f,18.f,1.2f);
-  g.drawLine(33.f,17.f,27.f,18.f,1.2f);
-  g.fillEllipse(40.f,39.f,4.2f,4.2f);
+  // AdlibLab's echo-reaper variant: the Skell skull sits inside a dark
+  // hood with symmetric waveform marks. Original JUCE vector geometry.
+  juce::Path hood;
+  hood.startNewSubPath(24.f,4.5f);
+  hood.cubicTo(10.f,5.f,7.f,17.f,6.7f,29.f);
+  hood.cubicTo(7.f,40.f,15.f,44.f,24.f,45.f);
+  hood.cubicTo(33.f,44.f,41.f,40.f,41.3f,29.f);
+  hood.cubicTo(41.f,17.f,38.f,5.f,24.f,4.5f);
+  hood.closeSubPath();
+  g.setColour(palette.background);g.fillPath(hood);
+  g.setColour(accent.withAlpha(hover?.95f:.73f));
+  g.strokePath(hood,juce::PathStrokeType(1.5f,juce::PathStrokeType::curved,
+                                       juce::PathStrokeType::rounded));
+  // Inner skull keeps the shared bone silhouette without SkellKey's key motif.
+  juce::Path face;
+  face.startNewSubPath(16.f,15.f);
+  face.cubicTo(19.f,12.f,29.f,12.f,32.f,15.f);
+  face.cubicTo(37.f,20.f,35.f,28.f,31.f,31.f);
+  face.lineTo(30.3f,38.f);face.lineTo(27.6f,40.f);
+  face.lineTo(20.4f,40.f);face.lineTo(17.7f,38.f);
+  face.lineTo(17.f,31.f);
+  face.cubicTo(13.f,28.f,11.f,20.f,16.f,15.f);
+  face.closeSubPath();
+  g.setColour(pressed?accent:palette.text);g.fillPath(face);
+  juce::Path eyes;
+  eyes.startNewSubPath(16.f,23.f);eyes.lineTo(22.f,24.f);
+  eyes.lineTo(21.f,29.f);eyes.lineTo(17.5f,28.f);eyes.closeSubPath();
+  eyes.startNewSubPath(32.f,23.f);eyes.lineTo(26.f,24.f);
+  eyes.lineTo(27.f,29.f);eyes.lineTo(30.5f,28.f);eyes.closeSubPath();
+  g.setColour(palette.background);g.fillPath(eyes);
+  juce::Path nose;
+  nose.startNewSubPath(24.f,29.f);nose.lineTo(21.7f,34.f);
+  nose.lineTo(26.3f,34.f);nose.closeSubPath();
+  g.fillPath(nose);
+  for(float x:{21.f,24.f,27.f})g.drawLine(x,36.4f,x,39.3f,1.1f);
+  // Echo marks, not a key: a distinct identity for vocal effects.
+  juce::Path waves;
+  waves.startNewSubPath(4.5f,21.f);
+  waves.quadraticTo(2.2f,26.f,4.5f,31.f);
+  waves.startNewSubPath(43.5f,21.f);
+  waves.quadraticTo(45.8f,26.f,43.5f,31.f);
+  g.setColour(accent.withAlpha(.86f));
+  g.strokePath(waves,juce::PathStrokeType(1.4f,juce::PathStrokeType::curved,
+                                        juce::PathStrokeType::rounded));
  }
 private:const Theme::Palette&palette;
 };

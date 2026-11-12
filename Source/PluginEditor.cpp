@@ -242,10 +242,11 @@ void SkellAdlibLabEditor::Canvas::paintOverChildren(juce::Graphics&g){
  if(from<0)return;
  const int dest=juce::jlimit(0,3,from+juce::roundToInt((float)draggingDelta/312.f));
  const float ghostX=juce::jlimit(30.f,966.f,(float)positions[from]+(float)draggingDelta);
- g.setColour(palette.stack.withAlpha(.10f));g.fillRoundedRectangle(ghostX,91.f,289.f,453.f,11.f);
- g.setColour(palette.stack.withAlpha(.8f));g.drawRoundedRectangle(ghostX,91.f,289.f,453.f,11.f,2.f);
+ const auto dragColour=palette.accent(draggingSlot);
+ g.setColour(dragColour.withAlpha(.11f));g.fillRoundedRectangle(ghostX,91.f,289.f,453.f,11.f);
+ g.setColour(dragColour.withAlpha(.85f));g.drawRoundedRectangle(ghostX,91.f,289.f,453.f,11.f,2.f);
  const float marker=(float)positions[dest]-(draggingDelta>=0?11.f:9.f);
- g.setColour(palette.stack);g.fillRoundedRectangle(marker,101.f,5.f,425.f,2.f);
+ g.setColour(dragColour);g.fillRoundedRectangle(marker,101.f,5.f,425.f,2.f);
 }
 void SkellAdlibLabEditor::Canvas::reorder(int slot,int displacement){
  auto order=processor.getModuleOrder();int from=0;for(int i=0;i<4;++i)if(order[(size_t)i]==slot)from=i;

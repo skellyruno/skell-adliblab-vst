@@ -12,7 +12,7 @@ public:
  void prepare(double sr){
   sampleRate=sr;stack.prepare(sr);character.prepare(sr);throwEngine.prepare(sr);melt.prepare(sr);
   for(auto& processor:shared)processor.prepare(sr);
-  fade=1.f;transition=0;order=pendingOrder={{0,1,2,3}};
+  fade=1.f;transition=0;slotBlend.fill(1.f);order=pendingOrder={{0,1,2,3}};
   types=pendingTypes={{RackType::Stack,RackType::Character,RackType::Throw,RackType::Chop}};
  }
  void setOrder(const std::array<int,4>& next) noexcept {
@@ -30,8 +30,16 @@ public:
   mod.throwFeedback=clamp(p.throwFeedback+p.chaos*chaos.signedRandom(3,13)*.18f,0,.99f);
   mod.meltAmount=clamp(p.meltAmount+p.chaos*chaos.signedRandom(4,14)*.2f,0,1);
   for(int slot:order){
-   if(!p.rackOn[(size_t)slot])continue;
-   switch(types[(size_t)slot]){
+   const auto index=(size_t)slot;
+   // Smooth bypass in the *physical* slot: automation and rack Shuffle can
+   // change enable state mid-waveform without an abrupt dry/wet discontinuity.
+   const float target=p.rackOn[index]?1.f:0.f;
+   const float step=(float)(1.0/(sampleRate*.012));
+   const float change=juce::jlimit(-step,step,target-slotBlend[index]);
+   slotBlend[index]=juce::jlimit(0.f,1.f,slotBlend[index]+change);
+   if(target==0.f&&slotBlend[index]<=0.f)continue;
+   const Stereo drySlot=s;
+   switch(types[index]){
     case RackType::Stack:s=stack.tick(s,mod,chaos,e.trackedHz);break;
     case RackType::Character:s=character.tick(s,mod,chaos);break;
     case RackType::Throw:s=throwEngine.tick(s,mod,e);break;
@@ -46,6 +54,8 @@ public:
     }
     case RackType::Empty:default:break;
    }
+   const float wet=slotBlend[index];
+   s={juce::jmap(wet,drySlot.l,s.l),juce::jmap(wet,drySlot.r,s.r)};
   }
   // 15ms fade to dry while changing the active chain, then fade up.
   const float rate=(float)(1.0/(sampleRate*.015));
@@ -64,6 +74,7 @@ private:
  RackTypes types{{RackType::Stack,RackType::Character,RackType::Throw,RackType::Chop}};
  RackTypes pendingTypes{{RackType::Stack,RackType::Character,RackType::Throw,RackType::Chop}};
  std::array<skellcore::adlibfx::Processor,4>shared;
+ std::array<float,4>slotBlend{{1.f,1.f,1.f,1.f}};
  float fade=1.f;int transition=0;
  CharacterEngine character;MeltEngine melt;
 };

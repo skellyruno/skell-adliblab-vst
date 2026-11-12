@@ -52,19 +52,43 @@ public:
  }
 private:const Theme::Palette&palette;int moduleId;
 };
+// A vector close icon stays legible at the minimum editor size. It preserves
+// the original click/callback semantics while enlarging the target to 26px.
+class RemoveEffectButton final:public juce::TextButton {
+public:
+ explicit RemoveEffectButton(const Theme::Palette& p)
+  :juce::TextButton("Remove effect"),palette(p){
+  setTooltip("Remove this effect and show an empty + slot");
+ }
+ void paintButton(juce::Graphics&g,bool hover,bool pressed)override{
+  const auto r=getLocalBounds().toFloat().reduced(1.f);
+  const auto ink=hover?palette.text:palette.muted;
+  g.setColour(pressed?palette.background:palette.raised);
+  g.fillRoundedRectangle(r,6.f);
+  g.setColour((hover?palette.text:palette.border).withAlpha(hover?.82f:.67f));
+  g.drawRoundedRectangle(r.reduced(.5f),5.5f,1.f);
+  const auto c=r.getCentre();
+  g.setColour(ink);
+  const float d=4.1f;
+  g.drawLine(c.x-d,c.y-d,c.x+d,c.y+d,1.7f);
+  g.drawLine(c.x+d,c.y-d,c.x-d,c.y+d,1.7f);
+ }
+private:
+ const Theme::Palette&palette;
+};
 class ModulePanel:public juce::Component,private juce::Slider::Listener {
 public:
  using SliderAttachment=juce::AudioProcessorValueTreeState::SliderAttachment;
  using ButtonAttachment=juce::AudioProcessorValueTreeState::ButtonAttachment;
  using ComboAttachment=juce::AudioProcessorValueTreeState::ComboBoxAttachment;
  ModulePanel(SkellAdlibLabProcessor&p,const Theme::Palette&pal,int id,juce::String name,const char*enabled)
-  :processor(p),palette(pal),moduleId(id),title(std::move(name)),grip(palette),on(palette,id){
+  :processor(p),palette(pal),moduleId(id),title(std::move(name)),grip(palette),on(palette,id),remove(palette){
    grip.onDrop=[this](int x){if(requestReorder)requestReorder(moduleId,x);};
    grip.onPreview=[this](int dx,bool active){if(requestPreview)requestPreview(moduleId,dx,active);};
    addAndMakeVisible(grip);grip.setBounds(249,11,29,28);
    on.setButtonText("");addAndMakeVisible(on);on.setBounds(207,10,31,31);
    on.onClick=[this]{updateBypassVisual();};
-   remove.setButtonText("X");remove.setBounds(179,14,20,22);
+   remove.setBounds(176,11,27,28);
    remove.setTooltip("Remove effect (shows + empty slot)");
    remove.onClick=[this]{if(requestRemove)requestRemove(moduleId);};
    addAndMakeVisible(remove);
@@ -208,10 +232,12 @@ private:
  void sliderValueChanged(juce::Slider* changed)override{
   for(int i=0;i<sliders.size();++i)if(sliders[i]==changed){
    readouts[i]->setText(formatReadout(readoutParams[(size_t)i],changed->getValue()),juce::dontSendNotification);
+   // Extra-effect diagrams follow automation as well as mouse edits.
+   repaint(19,105,252,320);
    return;
   }
  }
- DragGrip grip;ModulePowerButton on;juce::TextButton remove;int lastEnabled=-1;
+ DragGrip grip;ModulePowerButton on;RemoveEffectButton remove;int lastEnabled=-1;
  bool dragging=false;int dragStart=0,dragOffset=0;
  juce::OwnedArray<juce::Slider>sliders;juce::OwnedArray<juce::Label>labels,readouts;
  std::vector<juce::String> readoutParams;

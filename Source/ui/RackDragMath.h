@@ -3,12 +3,13 @@
 // JUCE MouseEvent::position, never physical screen pixels. This keeps rack
 // previews and the eventual drop in agreement at every editor zoom level.
 #include <algorithm>
-#include <cstdlib>
 
 namespace adlib {
 inline int rackDragDestination(int from, int designDelta) noexcept {
- if (from < 0 || from >= 4 || std::abs(designDelta) < 36) return from;
- const int steps = std::max(1, (std::abs(designDelta) + 156) / 312);
- return std::clamp(from + (designDelta > 0 ? steps : -steps), 0, 3);
+ const long long delta = designDelta;
+ const long long distance = delta < 0 ? -delta : delta;
+ if (from < 0 || from >= 4 || distance < 36) return from;
+ const long long steps = std::max(1LL, (distance + 156) / 312);
+ return static_cast<int>(std::clamp(static_cast<long long>(from) + (delta > 0 ? steps : -steps), 0LL, 3LL));
 }
 } // namespace adlib

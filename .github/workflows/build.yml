@@ -40,6 +40,10 @@ jobs:
         run: |
           g++ -std=c++17 -O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined -Wall -Wextra -Werror tests/rack_drag.cpp -o rack-drag
           ./rack-drag
+      - name: Validate global power bypass transition at five host rates
+        run: |
+          g++ -std=c++17 -O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined -Wall -Wextra -Werror tests/global_bypass.cpp -o global-bypass
+          ./global-bypass
       - name: Check silent-tail denormals without host FTZ
         run: |
           g++ -std=c++17 -O2 -Itests/stubs -Iskellcore-test-dependency/SkellCore/include tests/denorm_probe.cpp -o denorm-probe

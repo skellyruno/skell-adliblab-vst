@@ -1,6 +1,7 @@
 #include "../Source/ui/RackDragMath.h"
 #include <cassert>
 #include <cstdio>
+#include <limits>
 
 int main() {
  using adlib::rackDragDestination;
@@ -15,6 +16,8 @@ int main() {
  assert(rackDragDestination(0, 780) == 3);
  assert(rackDragDestination(-1, 100) == -1);
  assert(rackDragDestination(4, 100) == 4);
+ assert(rackDragDestination(0, std::numeric_limits<int>::max()) == 3);
+ assert(rackDragDestination(3, std::numeric_limits<int>::min()) == 0);
  for (int from = 0; from < 4; ++from) {
   int previous = -1;
   for (int delta = -1200; delta <= 1200; ++delta) {

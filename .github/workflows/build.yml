@@ -44,6 +44,8 @@ jobs:
         run: |
           g++ -std=c++17 -O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined -Wall -Wextra -Werror tests/global_bypass.cpp -o global-bypass
           ./global-bypass
+      - name: Test VST3 strict JSON normalization
+        run: python tests/moduleinfo_json.py
       - name: Check silent-tail denormals without host FTZ
         run: |
           g++ -std=c++17 -O2 -Itests/stubs -Iskellcore-test-dependency/SkellCore/include tests/denorm_probe.cpp -o denorm-probe
@@ -74,6 +76,8 @@ jobs:
           if (-not (Test-Path 'artifact/Skell AdlibLab.vst3/Contents/x86_64-win/Skell AdlibLab.vst3')) {
             throw 'x64 VST3 module missing from staged artifact'
           }
+      - name: Repair and validate staged VST3 moduleinfo.json
+        run: python packaging/normalize_moduleinfo.py "artifact/Skell AdlibLab.vst3/Contents/Resources/moduleinfo.json"
       - uses: actions/upload-artifact@v6
         with:
           name: Skell-AdlibLab-Windows-VST3

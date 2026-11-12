@@ -10,7 +10,7 @@ struct Size {const char* name;int width,height;};
 constexpr std::array<Size,5> sizes {{{"minimum",800,500},{"compact",1024,640},
  {"design",1280,800},{"large",1600,1000},{"maximum",1920,1200}}};
 constexpr std::array<const char*,4> themes {{"cosmic","neon","ivory","crimson"}};
-constexpr std::array<const char*,4> states {{"main","bypass","selected","preset"}};
+constexpr std::array<const char*,7> states {{"main","bypass","selected","preset","picker","empty","drag"}};
 void param(SkellAdlibLabProcessor& p,const char* name,float value){
  if(auto* r=dynamic_cast<juce::RangedAudioParameter*>(p.parameters.getParameter(name)))
   r->setValueNotifyingHost(r->convertTo0to1(value));
@@ -69,7 +69,7 @@ int main(int argc,char** argv){
    scene.width=size.width;scene.height=size.height;scene.theme=theme;
    options.scenes.push_back(scene);
   }
-  for(int state=1;state<4;++state)
+  for(int state=1;state<7;++state)
    for(const auto& size:std::array<Size,2>{{sizes[0],sizes[2]}}){
     skellcore::ui::headless::Scene scene;
     scene.id=juce::String(states[(size_t)state])+"-"+size.name;
@@ -84,7 +84,12 @@ int main(int argc,char** argv){
     std::fprintf(stderr,"Guided tour failed to display on actual AdlibLab editor\n");
     ++failures;
    }
+   // The renderer uses real processor state and real JUCE overlays.
+   processor.setRackType(3,scene.mode==5?adlib::RackType::Empty:adlib::RackType::Chop);
+   editor.refreshRackForScreenshot();
    editor.setPresetMenuForScreenshot(scene.mode==3);
+   editor.setEffectPickerForScreenshot(scene.mode==4);
+   editor.setDragPreviewForScreenshot(scene.mode==6);
    param(processor,"charOn",scene.mode==1?0.f:1.f);
    param(processor,"throwOn",scene.mode==1?0.f:1.f);
    param(processor,"charType",scene.mode==3?1.f:0.f);
@@ -98,7 +103,10 @@ int main(int argc,char** argv){
   options.inspect=[&]{return inspect(editor);};
   options.mustDiffer={{"main-minimum","bypass-minimum"},
                       {"main-design","selected-design"},
-                      {"main-design","preset-design"}};
+                      {"main-design","preset-design"},
+                      {"main-design","picker-design"},
+                      {"main-design","empty-design"},
+                      {"main-design","drag-design"}};
   if(theme==0)
     options.mustDiffer.push_back({"main-minimum","guided-tour-minimum"});
   const auto report=skellcore::ui::headless::render(editor,folder,options);
@@ -122,7 +130,7 @@ int main(int argc,char** argv){
   }
  }
  if(!skellcore::ui::headless::writePng(overview,out.getChildFile("contact-sheet.png")))++failures;
- if(captured!=45){std::fprintf(stderr,"Expected 45 actual UI PNGs, got %d\n",captured);++failures;}
+ if(captured!=69){std::fprintf(stderr,"Expected 69 actual UI PNGs, got %d\n",captured);++failures;}
  std::printf("SkellCore real editor: %d scenes, %d errors\n",captured,failures);
  processor.releaseResources();
  return failures==0?0:1;

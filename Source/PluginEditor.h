@@ -23,6 +23,8 @@ public:
  void applyLookAndFeelPalette(const Theme::Palette&);
  void setPresetMenuForScreenshot(bool);
  void setEffectPickerForScreenshot(bool);
+ void refreshRackForScreenshot();
+ void setDragPreviewForScreenshot(bool);
  juce::StringArray runUIInteractionTests();
  bool showGuidedTourForScreenshot();
  void dismissGuidedTourForScreenshot();

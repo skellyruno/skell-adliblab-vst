@@ -289,6 +289,8 @@ void SkellAdlibLabEditor::dismissGuidedTourForScreenshot(){
 void SkellAdlibLabEditor::applyLookAndFeelPalette(const Theme::Palette&p){lookAndFeel.applyPalette(p);canvas.repaint();}
 void SkellAdlibLabEditor::setPresetMenuForScreenshot(bool visible){canvas.showPresetMenu(visible);}
 void SkellAdlibLabEditor::setEffectPickerForScreenshot(bool visible){canvas.showEffectPickerForScreenshot(visible);}
+void SkellAdlibLabEditor::refreshRackForScreenshot(){canvas.ensureRackLayoutCurrent();}
+void SkellAdlibLabEditor::setDragPreviewForScreenshot(bool visible){canvas.previewDrag(3,326,visible);}
 juce::StringArray SkellAdlibLabEditor::runUIInteractionTests(){return canvas.runControlChecks();}
 void SkellAdlibLabEditor::timerCallback(){
  const bool clipChanged=processor.collectRecordedClip();

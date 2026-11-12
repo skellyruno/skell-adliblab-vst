@@ -45,6 +45,7 @@ private:
   void openEffectPicker(int slot);
   void showEffectPickerForScreenshot(bool enabled);
   void ensureRackLayoutCurrent();
+  bool hasOpenOverlay()const noexcept{return presetMenu.isVisible()||effectPicker.isVisible();}
   void layoutModules();
   void refreshMeters(bool clipsChanged);
   void sliderValueChanged(juce::Slider*)override;

@@ -124,14 +124,14 @@ void SkellAdlibLabEditor::Canvas::sliderValueChanged(juce::Slider* slider){
  if(slider==&gain)gainReadout.setText(juce::String(juce::roundToInt(gain.getValue()))+"dB",juce::dontSendNotification);
 }
 void SkellAdlibLabEditor::Canvas::showPresetMenu(bool visible){
- if(visible)effectPicker.setVisible(false);
+ if(visible){effectPicker.setVisible(false);editor.releaseComputerNotes();}
  presetMenu.setVisible(visible);
  if(visible){presetMenu.toFront(false);presetMenu.grabKeyboardFocus();}
  presetMenu.repaint();
 }
 void SkellAdlibLabEditor::Canvas::openEffectPicker(int slot){
  if(!juce::isPositiveAndBelow(slot,4))return;
- pickerSlot=slot;showPresetMenu(false);
+ pickerSlot=slot;showPresetMenu(false);editor.releaseComputerNotes();
  effectPicker.setVisible(true);effectPicker.toFront(false);effectPicker.grabKeyboardFocus();
 }
 void SkellAdlibLabEditor::Canvas::showEffectPickerForScreenshot(bool visible){
@@ -301,6 +301,7 @@ void SkellAdlibLabEditor::timerCallback(){
 // FL Studio must give the plugin keyboard focus. Controls and popup editors
 // keep priority; unhandled QWERTY keys map onto the actual MIDI clip engine.
 bool SkellAdlibLabEditor::keyPressed(const juce::KeyPress& key){
+ if(canvas.hasOpenOverlay())return false;
  const auto* focus=juce::Component::getCurrentlyFocusedComponent();
  if(dynamic_cast<const juce::TextEditor*>(focus)!=nullptr ||
     dynamic_cast<const juce::ComboBox*>(focus)!=nullptr) return false;

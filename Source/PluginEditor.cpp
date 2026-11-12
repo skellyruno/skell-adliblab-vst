@@ -240,7 +240,7 @@ void SkellAdlibLabEditor::Canvas::paintOverChildren(juce::Graphics&g){
  int from=-1;for(int i=0;i<4;++i)if(order[(size_t)i]==draggingSlot)from=i;
  if(from<0)return;
  const int dest=juce::jlimit(0,3,from+juce::roundToInt((float)draggingDelta/312.f));
- const float ghostX=(float)positions[from]+(float)draggingDelta;
+ const float ghostX=juce::jlimit(30.f,966.f,(float)positions[from]+(float)draggingDelta);
  g.setColour(palette.stack.withAlpha(.10f));g.fillRoundedRectangle(ghostX,91.f,289.f,453.f,11.f);
  g.setColour(palette.stack.withAlpha(.8f));g.drawRoundedRectangle(ghostX,91.f,289.f,453.f,11.f,2.f);
  const float marker=(float)positions[dest]-(draggingDelta>=0?11.f:9.f);
@@ -304,7 +304,7 @@ void SkellAdlibLabEditor::applyLookAndFeelPalette(const Theme::Palette&p){lookAn
 void SkellAdlibLabEditor::setPresetMenuForScreenshot(bool visible){canvas.showPresetMenu(visible);}
 void SkellAdlibLabEditor::setEffectPickerForScreenshot(bool visible){canvas.showEffectPickerForScreenshot(visible);}
 void SkellAdlibLabEditor::refreshRackForScreenshot(){canvas.ensureRackLayoutCurrent();}
-void SkellAdlibLabEditor::setDragPreviewForScreenshot(bool visible){canvas.previewDrag(3,326,visible);}
+void SkellAdlibLabEditor::setDragPreviewForScreenshot(bool visible){canvas.previewDrag(0,326,visible);}
 juce::StringArray SkellAdlibLabEditor::runUIInteractionTests(){return canvas.runControlChecks();}
 void SkellAdlibLabEditor::timerCallback(){
  const bool clipChanged=processor.collectRecordedClip();

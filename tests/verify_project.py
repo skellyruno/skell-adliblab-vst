@@ -29,6 +29,9 @@ assert 'globalBypass.setEnabled(p.globalOn)' in source
 assert (root/'Source/dsp/GlobalBypassFader.h').exists()
 assert 'tests/global_bypass.cpp' in (root/'.github/workflows/build.yml').read_text()
 assert 'HostTempoClock.h' in header and 'updateTempoFromPlayhead' in source
+assert 'getNumPrograms()override{return 1;}' in header
+assert 'getCurrentProgram()override{return 0;}' in header
+assert 'getProgramName(int index) override' in header and 'juce::String("Init Patch")' in header, 'VST3 default program must have a stable non-empty name'
 assert (root/'Source/dsp/PeakMeter.h').exists()
 workflow=(root/'.github/workflows/build.yml').read_text()
 assert 'build-windows:' in workflow
@@ -47,4 +50,12 @@ assert (root/'Source/dsp/ModuleOrder.h').exists()
 assert 'adlib::ModuleOrder moduleOrder;' in header
 assert 'resetFactoryPatch()' in (root/'Source/ui/HeaderBar.h').read_text()
 assert 'fileDragMove' in (root/'Source/ui/ClipBankView.h').read_text()
+assert 'test_vst3_verifier.py' in workflow, 'VST3 artifact verifier regression tests are not wired into CI'
+assert 'scripts/verify_vst3.py' in workflow, 'Windows package verifier is not run on the staged bundle'
+assert 'Tracktion/pluginval/validate@v2.0.0-beta3' in workflow, 'Strict pluginval gate missing'
+assert 'strictness-level: 5' in workflow, 'pluginval must run at strictness 5'
+assert 'PREVIEW-ONLY.txt' in workflow and 'SHA256SUMS.txt' in workflow
+assert 'RELEASE-NOTES.md' in workflow, 'Versioned release notes are not packaged'
+assert workflow.index('scripts/verify_vst3.py') < workflow.index('actions/upload-artifact@v6'), 'Artifact upload must follow package validation'
+assert 'cancel-in-progress:' in workflow and 'pull_request' in workflow, 'PR-only cancellation guard missing'
 print(f"Project static checks PASS: {len(ids)} parameters, {len(ui_ids)} UI bindings")

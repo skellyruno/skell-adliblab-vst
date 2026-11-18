@@ -32,7 +32,11 @@ public:
  int getNumPrograms()override{return 1;}
  int getCurrentProgram()override{return 0;}
  void setCurrentProgram(int)override{}
- const juce::String getProgramName(int)override{return {};}
+ const juce::String getProgramName(int index) override {
+  // VST3 program lists must never expose an unnamed program. The single
+  // factory state is the same stable patch shown by the editor header.
+  return index == 0 ? juce::String("Init Patch") : juce::String();
+ }
  void changeProgramName(int,const juce::String&)override{}
  void getStateInformation(juce::MemoryBlock&)override;
  void setStateInformation(const void*,int)override;

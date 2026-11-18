@@ -140,6 +140,9 @@ jobs:
           }
 
           Copy-Item -LiteralPath README.md -Destination 'artifact/README.md'
+          $releaseNotes = "docs/CHANGELOG-v$($versionMatch.Groups[1].Value).md"
+          if (-not (Test-Path -LiteralPath $releaseNotes -PathType Leaf)) { throw "Versioned release notes missing: $releaseNotes" }
+          Copy-Item -LiteralPath $releaseNotes -Destination 'artifact/RELEASE-NOTES.md'
           $buildInfo = [ordered]@{
             product = 'Skell AdlibLab'
             version = $versionMatch.Groups[1].Value

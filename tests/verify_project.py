@@ -52,6 +52,7 @@ assert 'scripts/verify_vst3.py' in workflow, 'Windows package verifier is not ru
 assert 'Tracktion/pluginval/validate@v2.0.0-beta3' in workflow, 'Strict pluginval gate missing'
 assert 'strictness-level: 5' in workflow, 'pluginval must run at strictness 5'
 assert 'PREVIEW-ONLY.txt' in workflow and 'SHA256SUMS.txt' in workflow
+assert 'RELEASE-NOTES.md' in workflow, 'Versioned release notes are not packaged'
 assert workflow.index('scripts/verify_vst3.py') < workflow.index('actions/upload-artifact@v6'), 'Artifact upload must follow package validation'
 assert 'cancel-in-progress:' in workflow and 'pull_request' in workflow, 'PR-only cancellation guard missing'
 print(f"Project static checks PASS: {len(ids)} parameters, {len(ui_ids)} UI bindings")

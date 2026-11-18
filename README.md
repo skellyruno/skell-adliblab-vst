@@ -161,3 +161,27 @@ last known valid value, with a 120 BPM default. Tempo advances once per block.
 Both visible level meters use the same allocation-free, sample-rate-independent
 peak envelope, with an approximately 180ms release instead of instant block peaks.
 No automatable parameter ID, VST3 identity, plugin latency, or preset format changed.
+
+
+## Private Windows preview installation
+
+The Windows preview ZIP now includes an unsigned per-user installer and a rollback guide. This is a private engineering preview, not a commercial release.
+
+1. Extract the complete preview ZIP to a normal user-writable folder.
+2. In PowerShell 7, inspect the operation with:
+   
+       .\Install-SkellAdlibLabPreview.ps1 -WhatIf
+
+3. Install after reviewing the proposed destination:
+
+       .\Install-SkellAdlibLabPreview.ps1 -Confirm
+
+The default destination is:
+
+    %LOCALAPPDATA%\Programs\Common\VST3\Skell AdlibLab.vst3
+
+Updates create and verify a backup before swapping the bundle. The installer does not elevate, write to Program Files, edit the registry, alter FL Studio projects, or change presets. Use the exact backup path printed by the installer to roll back:
+
+    .\Install-SkellAdlibLabPreview.ps1 -RollbackBackup "C:\Users\<you>\AppData\Local\Skelly\Skell-AdlibLab\backups\<backup-folder>" -Confirm
+
+The helper is unsigned and manually invoked. It is not an automatic update service or a commercial installer. FL Studio scan/load, state recall, musical A/B, target-PC CPU/latency, licensing and commercial acceptance remain separate gates.

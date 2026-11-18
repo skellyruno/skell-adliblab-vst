@@ -186,10 +186,13 @@ jobs:
           @(
             'SKELL ADLIBLAB WINDOWS VST3 PREVIEW'
             'release_status: preview-only; not a commercial release.'
-            'Not a signed installer; no automatic updater or rollback is included.'
+            'Unsigned private per-user installer with manual update and verified rollback is included; no automatic update service or commercial installer is included.'
             'FL Studio scan/load, host state recall, real musical A/B and target-PC CPU/latency remain unverified.'
             'Back up existing plugin installations before manual testing.'
           ) | Set-Content -LiteralPath 'artifact/PREVIEW-ONLY.txt' -Encoding ascii
+
+          Copy-Item -LiteralPath 'installer/windows/Install-SkellAdlibLabPreview.ps1' -Destination 'artifact/Install-SkellAdlibLabPreview.ps1'
+          Copy-Item -LiteralPath 'docs/INSTALL-PREVIEW.md' -Destination 'artifact/INSTALL-PREVIEW.md'
 
           $checksumPath = 'artifact/SHA256SUMS.txt'
           $root = (Resolve-Path artifact).Path
@@ -213,6 +216,9 @@ jobs:
             $actual = (Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash.ToLowerInvariant()
             if ($actual -ne $line.Substring(0, 64)) { throw "Checksum mismatch: $relative" }
           }
+      - name: Test private-preview install, update and rollback
+        shell: pwsh
+        run: ./installer/windows/Test-SkellAdlibLabPreviewInstaller.ps1 -PackagePath artifact
       - uses: actions/upload-artifact@v6
         with:
           name: Skell-AdlibLab-Windows-VST3-Preview

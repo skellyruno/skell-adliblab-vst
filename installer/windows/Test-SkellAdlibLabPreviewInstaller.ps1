@@ -83,6 +83,17 @@ try {
         throw 'Filesystem-root rejection unexpectedly created a plugin directory.'
     }
 
+    $invalidTargetRoot = Join-Path $testRoot 'invalid-target-root'
+    New-Item -ItemType Directory -Path $invalidTargetRoot | Out-Null
+    $invalidTarget = Join-Path $invalidTargetRoot 'Skell AdlibLab.vst3'
+    [System.IO.File]::WriteAllText($invalidTarget, 'preserve-this-file', [System.Text.UTF8Encoding]::new($false))
+    Invoke-ExpectedFailure -Label 'existing plugin target is a file' -Action {
+        & $Installer -PackagePath $PackagePath -InstallRoot $invalidTargetRoot -BackupRoot $backupRoot -Confirm:$false
+    }
+    if ([System.IO.File]::ReadAllText($invalidTarget) -cne 'preserve-this-file') {
+        throw 'Installer changed a pre-existing non-directory plugin target.'
+    }
+
     $packageChildInstall = Join-Path $PackagePath 'unsafe-install-root'
     Invoke-ExpectedFailure -Label 'install root inside package directory' -Action {
         & $Installer -PackagePath $PackagePath -InstallRoot $packageChildInstall -BackupRoot $backupRoot -Confirm:$false

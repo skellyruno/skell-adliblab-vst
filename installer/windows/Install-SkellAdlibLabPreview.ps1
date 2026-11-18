@@ -467,6 +467,12 @@ if (Test-Path -LiteralPath $InstallRoot -PathType Leaf) { throw 'InstallRoot exi
 if (Test-Path -LiteralPath $BackupRoot -PathType Leaf) { throw 'BackupRoot exists as a file.' }
 
 $TargetPath = Join-Path $InstallRoot $BundleName
+if (Test-Path -LiteralPath $TargetPath) {
+    if (-not (Test-Path -LiteralPath $TargetPath -PathType Container)) {
+        throw 'Existing plugin target is not a directory.'
+    }
+    Assert-NoReparseAncestors $TargetPath
+}
 
 if (-not [string]::IsNullOrWhiteSpace($RollbackBackup)) {
     $RollbackBackup = Get-FullPath $RollbackBackup

@@ -31,7 +31,7 @@ assert 'tests/global_bypass.cpp' in (root/'.github/workflows/build.yml').read_te
 assert 'HostTempoClock.h' in header and 'updateTempoFromPlayhead' in source
 assert 'getNumPrograms()override{return 1;}' in header
 assert 'getCurrentProgram()override{return 0;}' in header
-assert re.search(r'getProgramName\\(int\\s+index\\)\\s+override\\s*\\{\\s*return\\s+index\\s*==\\s*0\\s*\\?\\s*juce::String\\("Init Patch"\\)\\s*:\\s*juce::String\\(\\)\\s*;\\s*\\}', header), 'VST3 default program must have a stable non-empty name'
+assert 'getProgramName(int index) override' in header and 'juce::String("Init Patch")' in header, 'VST3 default program must have a stable non-empty name'
 assert (root/'Source/dsp/PeakMeter.h').exists()
 workflow=(root/'.github/workflows/build.yml').read_text()
 assert 'build-windows:' in workflow

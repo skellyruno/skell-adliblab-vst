@@ -1,4 +1,10 @@
 name: Build Skell AdlibLab VST3
+
+# Only superseded pull_request runs may be cancelled. Main and manual builds are protected.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 on:
   workflow_dispatch:
   push:
@@ -19,6 +25,8 @@ jobs:
         run: python tests/verify_project.py
       - name: Check responsive UI geometry contract
         run: python tests/ui_layout.py
+      - name: Test fail-closed Windows VST3 artifact verifier
+        run: python -m unittest discover -s tests -p "test_vst3_verifier.py" -v
       - uses: actions/checkout@v5
         with:
           repository: skellyruno/skellcore-vst-template
@@ -58,6 +66,7 @@ jobs:
   build-windows:
     runs-on: windows-latest
     needs: dsp-safety
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v5
       - name: Restore initial source bundle if needed
@@ -66,20 +75,118 @@ jobs:
         run: cmake -S . -B build -A x64
       - name: Compile Windows VST3 only
         run: cmake --build build --config Release --parallel 2
-      - name: Stage Windows VST3 (single-extraction artifact)
+      - name: Stage exactly one Windows VST3 bundle
         shell: pwsh
         run: |
-          $plugin = Get-ChildItem -Path build -Directory -Recurse -Filter 'Skell AdlibLab.vst3' | Select-Object -First 1
-          if (-not $plugin) { throw 'Skell AdlibLab VST3 not found' }
+          $ErrorActionPreference = 'Stop'
+          $plugins = @(Get-ChildItem -Path build -Directory -Recurse -Filter 'Skell AdlibLab.vst3')
+          if ($plugins.Count -ne 1) { throw "Expected exactly one Skell AdlibLab VST3 bundle, found $($plugins.Count)" }
+
+          $sourceModules = @(Get-ChildItem -LiteralPath $plugins[0].FullName -Recurse -File |
+            Where-Object { $_.Extension -ieq '.vst3' })
+          if ($sourceModules.Count -ne 1) { throw "Expected one module in the bundle, found $($sourceModules.Count)" }
+          $expectedRelative = 'Contents/x86_64-win/Skell AdlibLab.vst3'
+          $actualRelative = [System.IO.Path]::GetRelativePath($plugins[0].FullName, $sourceModules[0].FullName).Replace('\','/')
+          if ($actualRelative -cne $expectedRelative) { throw "Unexpected VST3 module path: $actualRelative" }
+
+          $moduleInfo = Join-Path $plugins[0].FullName 'Contents/Resources/moduleinfo.json'
+          if (-not (Test-Path -LiteralPath $moduleInfo -PathType Leaf)) { throw 'VST3 moduleinfo.json missing' }
+
+          if (Test-Path -LiteralPath artifact) { Remove-Item -LiteralPath artifact -Recurse -Force }
           New-Item -ItemType Directory -Path artifact -Force | Out-Null
-          Copy-Item -LiteralPath $plugin.FullName -Destination 'artifact/Skell AdlibLab.vst3' -Recurse -Force
-          if (-not (Test-Path 'artifact/Skell AdlibLab.vst3/Contents/x86_64-win/Skell AdlibLab.vst3')) {
-            throw 'x64 VST3 module missing from staged artifact'
+          Copy-Item -LiteralPath $plugins[0].FullName -Destination 'artifact/Skell AdlibLab.vst3' -Recurse -Force
+      - name: Normalize strict VST3 module metadata
+        shell: pwsh
+        run: |
+          python packaging/normalize_moduleinfo.py "artifact/Skell AdlibLab.vst3/Contents/Resources/moduleinfo.json"
+          if ($LASTEXITCODE -ne 0) { throw 'VST3 moduleinfo normalization failed' }
+      - name: Verify staged VST3 structure and AMD64 PE32+ binary
+        shell: pwsh
+        run: |
+          $output = & python scripts/verify_vst3.py "artifact/Skell AdlibLab.vst3"
+          if ($LASTEXITCODE -ne 0) { throw 'Fail-closed VST3 package verifier rejected the staged bundle' }
+          $output | Set-Content -LiteralPath 'artifact/VST3-VERIFICATION.json' -Encoding utf8
+      - name: Validate Skell AdlibLab with pluginval strictness 5
+        uses: Tracktion/pluginval/validate@v2.0.0-beta3
+        with:
+          plugins: artifact/Skell AdlibLab.vst3
+          strictness-level: 5
+          pluginval-version: v2.0.0-beta3
+      - name: Assemble preview manifest and preserve dependency notices
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $cmakeText = Get-Content -LiteralPath CMakeLists.txt -Raw
+          $versionMatch = [regex]::Match($cmakeText, 'project\s*\(\s*SkellAdlibLab\s+VERSION\s+([0-9.]+)')
+          $coreMatch = [regex]::Match($cmakeText, 'SKELL_ADLIBLAB_SKELLCORE_REV\s+"([0-9a-f]{40})"')
+          if (-not $versionMatch.Success -or -not $coreMatch.Success) { throw 'Could not resolve product version or pinned SkellCore revision' }
+
+          Copy-Item -LiteralPath README.md -Destination 'artifact/README.md'
+          $buildInfo = [ordered]@{
+            product = 'Skell AdlibLab'
+            version = $versionMatch.Groups[1].Value
+            format = 'VST3'
+            platform = 'Windows x86_64'
+            release_status = 'preview-only; not a commercial release'
+            source_commit = $env:GITHUB_SHA
+            source_ref = $env:GITHUB_REF
+            workflow_run_id = $env:GITHUB_RUN_ID
+            workflow_run_attempt = $env:GITHUB_RUN_ATTEMPT
+            juce_tag = '8.0.12'
+            skellcore_commit = $coreMatch.Groups[1].Value
+            pluginval_version = 'v2.0.0-beta3'
+            pluginval_strictness = 5
           }
-      - name: Repair and validate staged VST3 moduleinfo.json
-        run: python packaging/normalize_moduleinfo.py "artifact/Skell AdlibLab.vst3/Contents/Resources/moduleinfo.json"
+          $buildInfo | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath 'artifact/BUILD-INFO.json' -Encoding utf8
+
+          $noticeRoot = 'artifact/THIRD-PARTY-NOTICES'
+          New-Item -ItemType Directory -Path $noticeRoot -Force | Out-Null
+          Copy-Item -LiteralPath 'SkellCore/SOURCE_PROVENANCE.md' -Destination (Join-Path $noticeRoot 'SkellCore-SOURCE-PROVENANCE.md')
+          Copy-Item -LiteralPath 'SkellCore/licenses/SkellyTune-MIT.txt' -Destination (Join-Path $noticeRoot 'SkellyTune-MIT.txt')
+          $juceLicense = 'build/_deps/juce-src/LICENSE.md'
+          if (-not (Test-Path -LiteralPath $juceLicense -PathType Leaf)) { throw 'Pinned JUCE license notice missing from dependency checkout' }
+          Copy-Item -LiteralPath $juceLicense -Destination (Join-Path $noticeRoot 'JUCE-LICENSE.md')
+          @(
+            'Dependency notices for the exact source revisions recorded in BUILD-INFO.json.'
+            'The SkellyTune MIT notice applies only to the components identified by SkellCore-SOURCE-PROVENANCE.md.'
+            'It is not a blanket license for the complete SkellCore SDK or Skell AdlibLab product.'
+            'Commercial licensing and redistribution clearance for the complete product/dependency set remain outstanding.'
+          ) | Set-Content -LiteralPath (Join-Path $noticeRoot 'README.txt') -Encoding utf8
+
+          @(
+            'SKELL ADLIBLAB WINDOWS VST3 PREVIEW'
+            'release_status: preview-only; not a commercial release.'
+            'Not a signed installer; no automatic updater or rollback is included.'
+            'FL Studio scan/load, host state recall, real musical A/B and target-PC CPU/latency remain unverified.'
+            'Back up existing plugin installations before manual testing.'
+          ) | Set-Content -LiteralPath 'artifact/PREVIEW-ONLY.txt' -Encoding ascii
+
+          $checksumPath = 'artifact/SHA256SUMS.txt'
+          $root = (Resolve-Path artifact).Path
+          $checksumAbsolute = [System.IO.Path]::GetFullPath($checksumPath)
+          $files = @(Get-ChildItem -LiteralPath artifact -Recurse -File |
+            Where-Object { $_.FullName -ne $checksumAbsolute } |
+            Sort-Object FullName)
+          $lines = foreach ($file in $files) {
+            $relative = [System.IO.Path]::GetRelativePath($root, $file.FullName).Replace('\','/')
+            $hash = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$hash  $relative"
+          }
+          $lines | Set-Content -LiteralPath $checksumPath -Encoding ascii
+
+          foreach ($line in (Get-Content -LiteralPath $checksumPath)) {
+            $separator = $line.IndexOf('  ')
+            if ($separator -ne 64) { throw "Invalid checksum manifest line: $line" }
+            $relative = $line.Substring(66)
+            $target = Join-Path artifact $relative
+            if (-not (Test-Path -LiteralPath $target -PathType Leaf)) { throw "Checksum target missing: $relative" }
+            $actual = (Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($actual -ne $line.Substring(0, 64)) { throw "Checksum mismatch: $relative" }
+          }
       - uses: actions/upload-artifact@v6
         with:
-          name: Skell-AdlibLab-Windows-VST3
+          name: Skell-AdlibLab-Windows-VST3-Preview
           path: artifact/
           if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
